@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -41,7 +40,7 @@ export function SignUpForm() {
       return;
     }
 
-    router.push("/sign-in?registered=1");
+    router.push("/dashboard");
   }
 
   return (
@@ -53,13 +52,7 @@ export function SignUpForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">{t("email")}</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-        />
+        <Input id="email" name="email" type="email" required autoComplete="email" />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -77,9 +70,13 @@ export function SignUpForm() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <Button type="submit" disabled={loading} className="w-full">
+      <button
+        type="submit"
+        disabled={loading}
+        className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
+      >
         {loading ? "…" : t("submit")}
-      </Button>
+      </button>
 
       <p className="text-center text-sm text-muted-foreground">
         {t("hasAccount")}{" "}

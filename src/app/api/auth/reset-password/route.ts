@@ -3,7 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 
-const schema = z.object({
+const resetPasswordSchema = z.object({
   email: z.email(),
   token: z.string().min(1),
   password: z.string().min(8),
@@ -12,12 +12,12 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Corps de requête invalide" }, { status: 400 });
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const result = schema.safeParse(body);
+  const result = resetPasswordSchema.safeParse(body);
   if (!result.success) {
-    return NextResponse.json({ error: "Données invalides" }, { status: 400 });
+    return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
 
   const { email, token, password } = result.data;
@@ -27,19 +27,13 @@ export async function POST(req: NextRequest) {
   });
 
   if (!verificationToken || verificationToken.expires < new Date()) {
-    return NextResponse.json(
-      { error: "Lien de réinitialisation invalide ou expiré" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "invalid_or_expired_token" }, { status: 400 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
 
   await db.$transaction([
-    db.user.update({
-      where: { email },
-      data: { passwordHash },
-    }),
+    db.user.update({ where: { email }, data: { passwordHash } }),
     db.verificationToken.delete({
       where: { identifier_token: { identifier: email, token } },
     }),

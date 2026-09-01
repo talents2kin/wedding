@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Sign-up flow", () => {
-  test("a new user can sign up and is redirected to sign-in", async ({ page }) => {
+  test("a new user can sign up and lands on the dashboard", async ({ page }) => {
     const uniqueEmail = `test+${Date.now()}@example.com`;
 
     await page.goto("/sign-up");
@@ -17,8 +17,8 @@ test.describe("Sign-up flow", () => {
 
     await page.getByRole("button", { name: "Créer mon compte" }).click();
 
-    // After sign-up, user is sent to sign-in with registered flag
-    await expect(page).toHaveURL(/sign-in/);
+    // After sign-up, user is redirected to the dashboard
+    await expect(page).toHaveURL(/dashboard/);
   });
 
   test("shows an error when the email is already taken", async ({ page }) => {
