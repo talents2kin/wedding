@@ -26,7 +26,7 @@ test.describe("Landing page", () => {
   });
 
   test("renders the features section", async ({ page }) => {
-    await page.getByRole("link", { name: "Voir la démo" }).click();
+    await page.getByRole("link", { name: "Voir les fonctionnalités" }).click();
     await expect(
       page.getByText("Plusieurs cérémonies, une seule plateforme")
     ).toBeVisible();
