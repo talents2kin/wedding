@@ -56,5 +56,145 @@
     "welcome": "Bienvenue, {name} !",
     "noWedding": "Vous n'avez pas encore de mariage.",
     "createWedding": "Créer un mariage"
+  },
+  "landing": {
+    "nav": {
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "audiences": "Couples & Organisateurs",
+      "signIn": "Se connecter",
+      "cta": "Commencer gratuitement"
+    },
+    "hero": {
+      "badge": "Mariages coutumiers, civils & religieux",
+      "headline": "Gérez tous vos invités,\npour chaque cérémonie.",
+      "subheadline": "La seule plateforme pensée pour les mariages à plusieurs cérémonies. Invitations, plan de table, RSVP et accueil le jour J — en un seul endroit.",
+      "ctaPrimary": "Commencer gratuitement",
+      "ctaSecondary": "Voir les fonctionnalités",
+      "trustLine": "Gratuit pour commencer · Aucune carte bancaire requise"
+    },
+    "features": {
+      "title": "Tout ce dont vous avez besoin,\nnulle part ailleurs.",
+      "subtitle": "Conçu pour les mariages qui réunissent des familles sur plusieurs continents.",
+      "ceremony": {
+        "title": "Plusieurs cérémonies, une seule plateforme",
+        "description": "Coutumier, civil, religieux — chaque cérémonie a sa propre liste d'invités, ses invitations et son plan de table, le tout rattaché à un seul mariage."
+      },
+      "invitations": {
+        "title": "Invitations digitales & PDF",
+        "description": "Envoyez par e-mail, SMS ou WhatsApp. Générez des PDF avec QR code unique pour chaque invité. Planifiez des rappels automatiques."
+      },
+      "rsvp": {
+        "title": "RSVP en ligne",
+        "description": "Les invités confirment leur présence via un lien personnalisé. Préférences de repas, accompagnants — tout en un seul formulaire."
+      },
+      "seating": {
+        "title": "Plan de table interactif",
+        "description": "Glissez-déposez vos invités sur un plan visuel. Partagez le plan avec votre traiteur ou votre salle en un clic."
+      },
+      "checkin": {
+        "title": "Accueil le jour J",
+        "description": "Scannez le QR code de chaque invité à l'entrée depuis un téléphone. Comptage en temps réel, aucune application à installer."
+      },
+      "groups": {
+        "title": "Groupes & filtres",
+        "description": "Côté marié, côté mariée, VIP, famille — segmentez vos invités et envoyez des invitations ciblées en quelques secondes."
+      }
+    },
+    "audiences": {
+      "title": "Pour les couples. Pour les organisateurs.",
+      "couple": {
+        "tag": "Pour les mariés",
+        "title": "Votre mariage,\nsans la complexité.",
+        "description": "Créez votre mariage, ajoutez vos invités et gérez vos cérémonies en quelques minutes. Gratuit pour commencer.",
+        "points": [
+          "1 mariage, toutes vos cérémonies",
+          "Invitations par WhatsApp, SMS ou e-mail",
+          "Plan de table visuel",
+          "RSVP en ligne pour vos invités"
+        ],
+        "cta": "Créer mon mariage"
+      },
+      "planner": {
+        "tag": "Pour les organisateurs",
+        "title": "Gérez tous\nvos mariages.",
+        "description": "Un calendrier, plusieurs couples, une équipe. La marque blanche est disponible dès le plan Pro.",
+        "points": [
+          "Plusieurs mariages en parallèle",
+          "Calendrier & vue d'ensemble",
+          "Membres d'équipe avec rôles",
+          "Marque blanche (Pro & Agency)"
+        ],
+        "cta": "Démarrer en tant qu'organisateur"
+      }
+    },
+    "pricing": {
+      "title": "Des tarifs simples,\npour chaque situation.",
+      "subtitle": "Commencez gratuitement. Évoluez quand vous en avez besoin.",
+      "couple": {
+        "label": "Couples",
+        "free": {
+          "name": "Gratuit",
+          "price": "0 €",
+          "description": "Pour commencer",
+          "features": [
+            "Jusqu'à 50 invités",
+            "1 mariage",
+            "Invitations digitales",
+            "RSVP en ligne"
+          ],
+          "cta": "Commencer"
+        },
+        "paid": {
+          "name": "Essentiel",
+          "price": "29 €",
+          "period": "mariage",
+          "description": "Pour votre grand jour",
+          "features": [
+            "Invités illimités",
+            "Toutes les cérémonies",
+            "Plan de table visuel",
+            "Templates premium",
+            "Accueil QR le jour J"
+          ],
+          "cta": "Choisir Essentiel"
+        }
+      },
+      "planner": {
+        "label": "Organisateurs",
+        "starter": {
+          "name": "Starter",
+          "price": "49 €",
+          "period": "mois",
+          "description": "Pour démarrer",
+          "features": [
+            "Jusqu'à 5 mariages actifs",
+            "Toutes les fonctionnalités couple",
+            "Calendrier organisateur"
+          ],
+          "cta": "Choisir Starter"
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "99 €",
+          "period": "mois",
+          "description": "Pour les pros",
+          "badge": "Populaire",
+          "features": [
+            "Mariages illimités",
+            "Marque blanche",
+            "Membres d'équipe",
+            "Support prioritaire"
+          ],
+          "cta": "Choisir Pro"
+        }
+      }
+    },
+    "footer": {
+      "tagline": "La plateforme de gestion des invités pour les mariages qui comptent.",
+      "legalPrefix": "© {year} WeddingApp. Tous droits réservés.",
+      "privacy": "Confidentialité",
+      "terms": "Conditions d'utilisation"
+    }
   }
 }
