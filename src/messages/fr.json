@@ -1,0 +1,60 @@
+{
+  "common": {
+    "appName": "WeddingApp",
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "back": "Retour",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se déconnecter"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Connexion",
+      "description": "Connectez-vous à votre compte",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "noAccount": "Pas encore de compte ?",
+      "signUpLink": "S'inscrire",
+      "forgotPassword": "Mot de passe oublié ?",
+      "error": "E-mail ou mot de passe incorrect"
+    },
+    "signUp": {
+      "title": "Créer un compte",
+      "description": "Rejoignez WeddingApp pour gérer vos invités",
+      "name": "Nom complet",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe",
+      "passwordHint": "8 caractères minimum",
+      "submit": "Créer mon compte",
+      "hasAccount": "Déjà un compte ?",
+      "signInLink": "Se connecter",
+      "errorEmailTaken": "Cette adresse e-mail est déjà utilisée",
+      "errorInvalid": "Informations invalides"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "description": "Saisissez votre e-mail pour recevoir un lien de réinitialisation",
+      "email": "Adresse e-mail",
+      "submit": "Envoyer le lien",
+      "successTitle": "E-mail envoyé",
+      "successDescription": "Si un compte existe avec cette adresse, vous recevrez un e-mail dans quelques minutes.",
+      "backToSignIn": "Retour à la connexion"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue, {name} !",
+    "noWedding": "Vous n'avez pas encore de mariage.",
+    "createWedding": "Créer un mariage"
+  }
+}

@@ -1,0 +1,3 @@
+# Ceremonies are sub-events of a Wedding, not independent events
+
+A wedding in our target market (coutumier, civil, religieux) typically involves multiple ceremonies on different days, each with a different guest list, venue, and invitation. Rather than modelling each ceremony as a separate top-level event, we chose to make Ceremony a sub-entity of Wedding. This keeps the couple's guest pool unified at the Wedding level while allowing per-ceremony guest assignments, seating plans, and invitations. The alternative — treating each ceremony as a fully independent event — would force organisers to duplicate guest data and lose the cross-ceremony overview that differentiates us from generic event tools.

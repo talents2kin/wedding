@@ -1,0 +1,3 @@
+# Single GDPR standard applied globally, regardless of guest geography
+
+Our platform spans two markets: French/European diaspora and their families in Africa. Guest personal data (name, contact, dietary preference) therefore crosses EU and non-EU jurisdictions in the same event. Rather than applying lighter local compliance rules for African guests, we apply GDPR to all guest data globally. This simplifies the data model (one retention policy, one consent flow, one deletion path), avoids accidental non-compliance when guests move between regions, and is a credible trust signal in the EU market. The cost is slightly stricter obligations than local law requires for African-resident guests — a deliberate trade-off.
