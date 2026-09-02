@@ -113,6 +113,7 @@ model Wedding {
   plannerAccount PlannerAccount? @relation(fields: [plannerAccountId], references: [id], onDelete: Cascade)
   ceremonies     Ceremony[]
   guests         Guest[]
+  guestGroups    GuestGroup[]
 }
 
 enum CeremonyType {
@@ -141,6 +142,7 @@ model Ceremony {
 model GuestCeremony {
   guestId    String
   ceremonyId String
+  rsvp       RsvpStatus @default(PENDING)
 
   guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
   ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
@@ -155,14 +157,42 @@ enum RsvpStatus {
 }
 
 model Guest {
-  id        String     @id @default(cuid())
-  name      String
-  weddingId String
-  rsvp      RsvpStatus @default(PENDING)
+  id           String  @id @default(cuid())
+  name         String
+  phone        String?
+  email        String?
+  mealPref     String?
+  plusOneName  String?
+  plusOnePhone String?
+  plusOneEmail String?
+  weddingId    String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wedding           Wedding         @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  wedding             Wedding            @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   ceremonyAssignments GuestCeremony[]
+  groupMemberships    GuestGroupMember[]
+}
+
+model GuestGroup {
+  id        String @id @default(cuid())
+  name      String
+  weddingId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wedding Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  members GuestGroupMember[]
+}
+
+model GuestGroupMember {
+  guestId String
+  groupId String
+
+  guest Guest      @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  group GuestGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([guestId, groupId])
 }

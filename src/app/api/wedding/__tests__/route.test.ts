@@ -17,7 +17,7 @@ vi.mock("@/lib/db", () => ({
     wedding: {
       create: vi.fn(),
     },
-    guest: {
+    guestCeremony: {
       count: vi.fn(),
     },
   },
@@ -100,7 +100,7 @@ describe("GET /api/wedding", () => {
     vi.mocked(db.coupleAccount.findUnique).mockResolvedValue(
       COUPLE_ACCOUNT_WITH_WEDDING as never
     );
-    vi.mocked(db.guest.count).mockResolvedValue(0);
+    vi.mocked(db.guestCeremony.count).mockResolvedValue(0);
 
     const res = await GET();
     expect(res.status).toBe(200);

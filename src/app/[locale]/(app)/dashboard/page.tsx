@@ -36,8 +36,8 @@ export default async function DashboardPage() {
 
   const { wedding } = coupleAccount;
 
-  const rsvpConfirmed = await db.guest.count({
-    where: { weddingId: wedding.id, rsvp: "CONFIRMED" },
+  const rsvpConfirmed = await db.guestCeremony.count({
+    where: { ceremony: { weddingId: wedding.id }, rsvp: "CONFIRMED" },
   });
 
   // ── Derived values ────────────────────────────────────────────────────────
