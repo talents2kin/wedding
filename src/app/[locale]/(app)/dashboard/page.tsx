@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { SenderNameEditor } from "@/components/app/sender-name-editor";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -142,13 +143,16 @@ export default async function DashboardPage() {
               </div>
             ) : null}
 
-            <Link
-              href="/ceremonies"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
-            >
-              <Plus className="h-4 w-4" />
-              Nouvelle cérémonie
-            </Link>
+            <div className="flex items-center gap-3">
+              <SenderNameEditor weddingId={wedding.id} initialValue={wedding.senderName} />
+              <Link
+                href="/ceremonies"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+              >
+                <Plus className="h-4 w-4" />
+                Nouvelle cérémonie
+              </Link>
+            </div>
           </div>
         </div>
       </header>

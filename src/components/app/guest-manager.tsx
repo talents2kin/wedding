@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Pencil, Trash2, X, Check, Users, Tag, CalendarDays, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Check, Users, Tag, CalendarDays, ChevronDown, Mail, MessageSquare, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,14 +78,30 @@ function ceremonyLabel(c: Ceremony): string {
 // GuestManager
 // ---------------------------------------------------------------------------
 
+// Latest invitation status per guestId
+export type GuestInvitationStatus = {
+  guestId: string;
+  status: "PENDING" | "SENT" | "DELIVERED" | "FAILED";
+  channel: "EMAIL" | "SMS" | "WHATSAPP";
+};
+
+const CHANNEL_ICONS = { EMAIL: Mail, SMS: Phone, WHATSAPP: MessageSquare };
+const INV_STATUS: Record<string, { label: string; className: string }> = {
+  SENT: { label: "Envoyé", className: "text-emerald-700 bg-emerald-500/10" },
+  DELIVERED: { label: "Livré", className: "text-emerald-700 bg-emerald-500/10" },
+  FAILED: { label: "Échoué", className: "text-destructive bg-destructive/10" },
+  PENDING: { label: "En attente", className: "text-muted-foreground bg-muted" },
+};
+
 type Props = {
   weddingId: string;
   initialGuests: Guest[];
   initialGroups: GuestGroup[];
   initialCeremonies: Ceremony[];
+  invitationStatuses?: GuestInvitationStatus[];
 };
 
-export function GuestManager({ weddingId, initialGuests, initialGroups, initialCeremonies }: Props) {
+export function GuestManager({ weddingId, initialGuests, initialGroups, initialCeremonies, invitationStatuses = [] }: Props) {
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [groups, setGroups] = useState<GuestGroup[]>(initialGroups);
   const [isPending, startTransition] = useTransition();
@@ -466,10 +482,22 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
                       )}
                       {guest.name}
                     </p>
-                    <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[13px] text-muted-foreground">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px] text-muted-foreground">
                       {guest.email && <span>{guest.email}</span>}
                       {guest.phone && <span>{guest.phone}</span>}
                       {guest.mealPref && <span>{guest.mealPref}</span>}
+                      {(() => {
+                        const inv = invitationStatuses.find((s) => s.guestId === guest.id);
+                        if (!inv) return null;
+                        const cfg = INV_STATUS[inv.status];
+                        const ChIcon = CHANNEL_ICONS[inv.channel];
+                        return (
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", cfg.className)}>
+                            <ChIcon className="h-2.5 w-2.5" />
+                            {cfg.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {guest.ceremonyAssignments.map((a) => {

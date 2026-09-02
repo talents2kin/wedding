@@ -103,6 +103,7 @@ model Wedding {
   id               String  @id @default(cuid())
   name             String
   date             DateTime
+  senderName       String?
   coupleAccountId  String? @unique
   plannerAccountId String?
 
@@ -114,6 +115,7 @@ model Wedding {
   ceremonies     Ceremony[]
   guests         Guest[]
   guestGroups    GuestGroup[]
+  invitations    Invitation[]
 }
 
 enum CeremonyType {
@@ -137,6 +139,7 @@ model Ceremony {
 
   wedding          Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   guestAssignments GuestCeremony[]
+  invitations      Invitation[]
 }
 
 model GuestCeremony {
@@ -156,9 +159,21 @@ enum RsvpStatus {
   DECLINED
 }
 
+enum GuestType {
+  SINGLETON
+  COUPLE
+}
+
+enum Gender {
+  MR
+  MME
+}
+
 model Guest {
-  id           String  @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
+  guestType    GuestType @default(SINGLETON)
+  gender       Gender?   // null for COUPLE
   phone        String?
   email        String?
   mealPref     String?
@@ -173,6 +188,7 @@ model Guest {
   wedding             Wedding            @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   ceremonyAssignments GuestCeremony[]
   groupMemberships    GuestGroupMember[]
+  invitations         Invitation[]
 }
 
 model GuestGroup {
@@ -195,4 +211,40 @@ model GuestGroupMember {
   group GuestGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@id([guestId, groupId])
+}
+
+// ---------------------------------------------------------------------------
+// Domain — Invitations
+// ---------------------------------------------------------------------------
+
+enum Channel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model Invitation {
+  id         String             @id @default(cuid())
+  weddingId  String
+  guestId    String
+  ceremonyId String
+  templateId String             // slug from static template catalog
+  channel    Channel
+  status     NotificationStatus @default(PENDING)
+  customBody String?            // paid-user body override
+  sentAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
 }

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CalendarDays, Users, CheckCircle2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { SenderNameEditor } from "@/components/app/sender-name-editor";
 
 function fmt(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -73,6 +74,9 @@ export default async function WeddingDashboardPage({
             </Link>
             <h1 className="text-2xl font-bold leading-tight">{wedding.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{fmt(wedding.date)}</p>
+            <div className="mt-2">
+              <SenderNameEditor weddingId={weddingId} initialValue={wedding.senderName} />
+            </div>
           </div>
           <div className="flex gap-2">
             <Link
@@ -83,9 +87,15 @@ export default async function WeddingDashboardPage({
             </Link>
             <Link
               href={`/weddings/${weddingId}/guests`}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-4 text-sm text-muted-foreground hover:bg-muted"
             >
               Invités
+            </Link>
+            <Link
+              href={`/weddings/${weddingId}/invitations`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+            >
+              Invitations
             </Link>
           </div>
         </div>

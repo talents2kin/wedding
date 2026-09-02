@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { GuestManager, type Ceremony, type Guest, type GuestGroup } from "@/components/app/guest-manager";
+import { GuestManager, type Ceremony, type Guest, type GuestGroup, type GuestInvitationStatus } from "@/components/app/guest-manager";
 import { ImportSection } from "@/components/app/import-section";
 
 export default async function GuestsPage() {
@@ -17,7 +17,7 @@ export default async function GuestsPage() {
 
   const { wedding } = coupleAccount;
 
-  const [guests, groups, ceremonies] = await Promise.all([
+  const [guests, groups, ceremonies, latestInvitations] = await Promise.all([
     db.guest.findMany({
       where: { weddingId: wedding.id },
       include: {
@@ -34,7 +34,26 @@ export default async function GuestsPage() {
       where: { weddingId: wedding.id },
       orderBy: { position: "asc" },
     }),
+    db.invitation.findMany({
+      where: { weddingId: wedding.id },
+      select: { guestId: true, status: true, channel: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
+  // Latest invitation per guest
+  const invitationStatuses: GuestInvitationStatus[] = [];
+  const seen = new Set<string>();
+  for (const inv of latestInvitations) {
+    if (!seen.has(inv.guestId)) {
+      seen.add(inv.guestId);
+      invitationStatuses.push({
+        guestId: inv.guestId,
+        status: inv.status as GuestInvitationStatus["status"],
+        channel: inv.channel as GuestInvitationStatus["channel"],
+      });
+    }
+  }
 
   const serializedGuests: Guest[] = guests.map((g) => ({
     id: g.id,
@@ -89,6 +108,7 @@ export default async function GuestsPage() {
           initialGuests={serializedGuests}
           initialGroups={serializedGroups}
           initialCeremonies={serializedCeremonies}
+          invitationStatuses={invitationStatuses}
         />
       </main>
     </div>

@@ -1,0 +1,195 @@
+{
+  "title": "Choisir le monde visuel",
+  "question": "Le roll a assigné la direction #5 (tableau de bord du planner), mais le challenger sérigraphie la bat sur les deux axes. Voici le build candidate, une alternate, et le pick. Verrouillez une direction.",
+  "options": [
+    {
+      "id": "screenprint-procession",
+      "label": "Superposition de cérémonies",
+      "kicker": "THE ROLL",
+      "lineage": "Sérigraphie transparente — procession de cérémonie, encres spot sur papier mulberry",
+      "thesis": "Trois cérémonies, trois passes d'encre. Les mêmes familles, rendues en couches.",
+      "palette": ["#F5F0EB", "#0097B2", "#E8A030", "#C8293A", "#1A1A1A"],
+      "materials": ["encre sérigraphique translucide", "papier mulberry", "croix de repérage", "lettrines stencil"],
+      "viewport": "Hero plein format : trois passes nommées (COUTUMIER en cyan, CIVIL en ambre, RELIGIEUX en écarlate) se superposent et dérivent lentement. Aux intersections, les couleurs se fondent (teal, orange, violet). Nom du produit estampillé en capitales stencil. Un CTA primaire centré sous la composition.",
+      "risk": "Peut sembler «\u00a0pour mariages africains uniquement\u00a0» si le cadrage textuel n'est pas universel — la copy doit accueillir toutes les cultures de cérémonie.",
+      "raised": [
+        {
+          "from": "Akari (décliné)",
+          "raise": "Les intersections de couches de couleur ont une chaleur optique organique — mélange d'encres, pas de flat digital blend."
+        },
+        {
+          "from": "Film 16mm (décliné)",
+          "raise": "La section features est organisée en strips horizontaux étiquetés, comme des bandes film, avec marges et repères."
+        },
+        {
+          "from": "Factory Records (décliné)",
+          "raise": "Chaque type de cérémonie porte un code couleur spot (cyan / ambre / écarlate) utilisé comme notation de données cohérente dans toute l'interface."
+        },
+        {
+          "from": "One-bit desktop (décliné)",
+          "raise": "L'état de sélection actif sur une cérémonie affiche un ghost border animé en dérive lente."
+        },
+        {
+          "from": "Night flight (décliné)",
+          "raise": "Le héros impose un ordre de lecture cross-check strict : QUOI → POURQUOI → ACTION avant le fold."
+        }
+      ],
+      "wireframe": {
+        "cols": 12,
+        "rows": 14,
+        "regions": [
+          {"label": "nav", "x": 0, "y": 0, "w": 12, "h": 1},
+          {"label": "hero — passes sérigraphiques superposées", "x": 0, "y": 1, "w": 12, "h": 5, "accent": true},
+          {"label": "badge QUOI", "x": 3, "y": 6, "w": 6, "h": 1},
+          {"label": "features — strip coutumier", "x": 0, "y": 7, "w": 12, "h": 1},
+          {"label": "features — strip civil", "x": 0, "y": 8, "w": 12, "h": 1},
+          {"label": "features — strip religieux", "x": 0, "y": 9, "w": 12, "h": 1},
+          {"label": "tarifs couple", "x": 0, "y": 10, "w": 6, "h": 2},
+          {"label": "tarifs planner", "x": 6, "y": 10, "w": 6, "h": 2},
+          {"label": "CTA final", "x": 2, "y": 12, "w": 8, "h": 1},
+          {"label": "footer", "x": 0, "y": 13, "w": 12, "h": 1}
+        ]
+      },
+      "hero": "https://impeccable.style/worlds/cards/ink-pigment-printmaking-screenprint-transparent-overlap-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/ink-pigment-printmaking-screenprint-transparent-overlap.webp"
+    },
+    {
+      "id": "model-pick",
+      "label": "Le faire-part letterpress",
+      "kicker": "IMPECCABLE'S PICK",
+      "lineage": "Faire-part de mariage français — letterpress sur coton épais, foil cuivre, typographie cérémonielle",
+      "thesis": "L'invitation qui a mérité son enveloppe. Dense, typographique, rite pour la liste d'invités la plus importante qu'on écrira jamais.",
+      "palette": ["#F4EFE6", "#1A1410", "#A0672B", "#C8293A"],
+      "materials": ["impression letterpress", "stock coton 600g", "foil cuivre", "gravure thermographique"],
+      "viewport": "Panneau invitation géant en plein écran : nom du produit en gaufrage à sec, cérémonies listées comme sections numérotées (I. Coutumier, II. Civil, III. Religieux), CTA stylisé en carte-réponse à détacher.",
+      "risk": "La direction la plus familière — la plupart des runs dans cette catégorie atterrissent près de ce monde. Fort, mais prévisible.",
+      "wireframe": {
+        "cols": 12,
+        "rows": 14,
+        "regions": [
+          {"label": "nav — fond coton", "x": 0, "y": 0, "w": 12, "h": 1},
+          {"label": "panneau invitation plein format", "x": 1, "y": 1, "w": 10, "h": 6, "accent": true},
+          {"label": "sections cérémonies I / II / III", "x": 0, "y": 7, "w": 12, "h": 2},
+          {"label": "features grid 3 col", "x": 0, "y": 9, "w": 12, "h": 2},
+          {"label": "tarifs en deux colonnes", "x": 0, "y": 11, "w": 12, "h": 2},
+          {"label": "CTA carte-réponse", "x": 3, "y": 13, "w": 6, "h": 1}
+        ]
+      }
+    },
+    {
+      "id": "planning-board",
+      "label": "Tableau de bord du planner",
+      "verdict": "competitive",
+      "lineage": "Planning board — grille d'exploitation, post-its, strips de timeline, fiches couleur épinglées",
+      "thesis": "Le centre de commandement du professionnel — chaque mariage d'un coup d'œil, chaque cérémonie codée par couleur.",
+      "palette": ["#F7F5F2", "#1C1C1C", "#0097B2", "#E8A030", "#C8293A"],
+      "materials": ["toile de lin", "post-its", "strips imprimés", "fiches épinglées"],
+      "viewport": "Hero : tableau de bord pour deux mariages en cours. Chaque cérémonie = une colonne couleur (cyan / ambre / écarlate). Compteur d'invités confirmés, état RSVP, date. CTA : Commencer votre premier mariage.",
+      "case": "Forte clarté pour les planners — la structure en colonnes de cérémonie carte parfaitement le produit. Perd légèrement sur l'identification couple (ça ressemble à du travail).",
+      "risk": "Peut décourager les couples qui cherchent de la sérénité, pas une interface de gestion de projet.",
+      "raised": [
+        {
+          "from": "Screenprint (gagnant)",
+          "raise": "Les colonnes de cérémonie adoptent les mêmes codes couleur spot (cyan / ambre / écarlate) comme notation cohérente."
+        }
+      ],
+      "wireframe": {
+        "cols": 12,
+        "rows": 14,
+        "regions": [
+          {"label": "nav", "x": 0, "y": 0, "w": 12, "h": 1},
+          {"label": "hero — planning board 2 mariages", "x": 0, "y": 1, "w": 12, "h": 5, "accent": true},
+          {"label": "col coutumier (cyan)", "x": 0, "y": 6, "w": 4, "h": 3},
+          {"label": "col civil (ambre)", "x": 4, "y": 6, "w": 4, "h": 3},
+          {"label": "col religieux (écarlate)", "x": 8, "y": 6, "w": 4, "h": 3},
+          {"label": "tarifs 2 colonnes", "x": 0, "y": 9, "w": 12, "h": 3},
+          {"label": "CTA", "x": 3, "y": 12, "w": 6, "h": 1},
+          {"label": "footer", "x": 0, "y": 13, "w": 12, "h": 1}
+        ]
+      },
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-night-flight-six-pack-hero.webp"
+    },
+    {
+      "id": "akari-washi",
+      "label": "Akari — volumes de washi lumineux",
+      "verdict": "declined",
+      "lineage": "Atelier akari — papier washi plié sur armature bambou, lumière diffusée",
+      "palette": ["#F2E8D5", "#1A1410", "#C8293A"],
+      "materials": ["papier washi", "armature bambou", "tampon vermillon"],
+      "case": "Chaleur et délicatesse, mais la référence est trop étrangère à la culture mariage francophone pour créer une identification immédiate.",
+      "kept": "Chaleur optique aux intersections de couleurs — élevée dans la direction principale.",
+      "hero": "https://impeccable.style/worlds/cards/paper-folds-pleats-deployable-akari-light-sculpture-hero.webp"
+    },
+    {
+      "id": "film-16mm",
+      "label": "Film 16mm traité main",
+      "verdict": "declined",
+      "lineage": "Pellicule 16mm — chimie irrégulière, rayures, fuites lumineuses, grain d'émulsion",
+      "palette": ["#1A1410", "#9C9080", "#E87030"],
+      "materials": ["émulsion argentique", "grease-pencil", "perforations film"],
+      "case": "Esthétique photographique belle mais le processus de développement ne se fusionne pas lisiblement avec la gestion d'invités.",
+      "kept": "Composition en strips étiquetés — élevée dans la direction principale.",
+      "hero": "https://impeccable.style/worlds/cards/cinema-cinematography-editing-hand-processed-film-bloom-hero.webp"
+    },
+    {
+      "id": "factory-records",
+      "label": "Factory Records catalog",
+      "verdict": "declined",
+      "lineage": "Identité Factory Records — matte black, plot pulsaire blanc, strips couleur codés",
+      "palette": ["#0A0A0A", "#F0F0F0", "#E8A030"],
+      "materials": ["matte black", "hairlines blancs", "blocs couleur encodés"],
+      "case": "Identité visuellement forte mais culturellement étrangère à l'audience (post-punk britannique). Clarté produit insuffisante.",
+      "kept": "Notation en blocs couleur comme langage de données — élevée dans la direction principale.",
+      "hero": "https://impeccable.style/worlds/cards/brand-identity-canon-saville-catalog-sleeve-hero.webp"
+    },
+    {
+      "id": "one-bit-desktop",
+      "label": "Bureau one-bit",
+      "verdict": "declined",
+      "lineage": "Mac 128k — dithers gris ordonné, fenêtres superposées, ants marchants, icônes 32px",
+      "palette": ["#000000", "#FFFFFF"],
+      "materials": ["pixels noirs/blancs", "dithers stipple", "chrome 1px"],
+      "case": "Nostalgie informatique sans résonance dans le contexte mariage. Couples ne s'identifient pas.",
+      "kept": "États sélectionnés animés (drifting ghost border) — élevés dans la direction principale.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-one-bit-desktop-hero.webp"
+    },
+    {
+      "id": "night-flight",
+      "label": "Six-pack de vol de nuit",
+      "verdict": "declined",
+      "lineage": "Tableau de bord d'avion — six cadrans lumineux sur fond matte black",
+      "palette": ["#0A0A0A", "#E8F0E0", "#40A040"],
+      "materials": ["cadrans noirs", "marquages blancs lumineux", "lampes ambre"],
+      "case": "Esthétique technique / SaaS tech. L'audience couple ne s'identifie pas. Fusionne mal avec les émotions du mariage.",
+      "kept": "Ordre de lecture cross-check (QUOI / POURQUOI / ACTION) — élevé dans la direction principale.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-night-flight-six-pack-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": ["safer", "bolder"]
+  },
+  "buildPath": {
+    "value": "code"
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "Le standard de la catégorie",
+    "thesis": "Ce que toute plateforme mariage livre — fond blanc, palette blush/champagne, serif délicat, grid propre. Exécuté avec un niveau de craft maximal.",
+    "palette": ["#FFFFFF", "#F5E8E0", "#8A6A5A", "#2D2D2D"],
+    "materials": ["grid blanc propre", "typographie script ou serif fin", "photographie produit"],
+    "viewport": "Le layout qu'un visiteur anticipe. Hero centré, headline serif, CTA primaire en accent blush. Craft au niveau de la meilleure concurrence.",
+    "risk": "Indiscernable de la concurrence par conception.",
+    "wireframe": {
+      "cols": 12,
+      "rows": 12,
+      "regions": [
+        {"label": "nav blanc", "x": 0, "y": 0, "w": 12, "h": 1},
+        {"label": "hero centré — headline serif + CTA blush", "x": 2, "y": 1, "w": 8, "h": 4, "accent": true},
+        {"label": "features 3 colonnes", "x": 0, "y": 5, "w": 12, "h": 3},
+        {"label": "pricing 2 colonnes", "x": 0, "y": 8, "w": 12, "h": 3},
+        {"label": "footer", "x": 0, "y": 11, "w": 12, "h": 1}
+      ]
+    }
+  },
+  "steer": true
+}

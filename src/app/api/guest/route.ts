@@ -27,6 +27,8 @@ const RsvpEnum = z.enum(["PENDING", "CONFIRMED", "DECLINED"]);
 const guestSchema = z.object({
   weddingId: z.string().min(1),
   name: z.string().min(1),
+  guestType: z.enum(["SINGLETON", "COUPLE"]).optional().default("SINGLETON"),
+  gender: z.enum(["MR", "MME"]).optional().nullable(),
   phone: z.string().optional(),
   email: z.string().email().optional(),
   mealPref: z.string().optional(),

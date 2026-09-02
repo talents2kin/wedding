@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarDays, Users, Settings, HelpCircle } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Users, Mail, Settings, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const coupleNav = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/ceremonies", label: "Cérémonies", icon: CalendarDays },
   { href: "/guests", label: "Invités", icon: Users },
+  { href: "/invitations", label: "Invitations", icon: Mail },
 ] as const;
 
 const plannerNav = [

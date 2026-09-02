@@ -18,6 +18,8 @@ async function getOwnedWedding(userId: string, weddingId: string) {
 
 const patchSchema = z.object({
   name: z.string().min(1).optional(),
+  guestType: z.enum(["SINGLETON", "COUPLE"]).optional(),
+  gender: z.enum(["MR", "MME"]).optional().nullable(),
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   mealPref: z.string().optional().nullable(),
