@@ -49,9 +49,6 @@ type GuestFormState = {
   phone: string;
   email: string;
   mealPref: string;
-  plusOneName: string;
-  plusOnePhone: string;
-  plusOneEmail: string;
 };
 
 const BLANK_GUEST: GuestFormState = {
@@ -61,9 +58,6 @@ const BLANK_GUEST: GuestFormState = {
   phone: "+243 ",
   email: "",
   mealPref: "",
-  plusOneName: "",
-  plusOnePhone: "",
-  plusOneEmail: "",
 };
 
 type RsvpFilter = "PENDING" | "CONFIRMED" | "DECLINED" | null;
@@ -141,9 +135,6 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
       phone: guest.phone ?? "+243 ",
       email: guest.email ?? "",
       mealPref: guest.mealPref ?? "",
-      plusOneName: guest.plusOneName ?? "",
-      plusOnePhone: guest.plusOnePhone ?? "",
-      plusOneEmail: guest.plusOneEmail ?? "",
     });
     setEditCeremonyIds(guest.ceremonyAssignments.map((a) => a.ceremonyId));
   }
@@ -441,8 +432,7 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
                     <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[13px] text-muted-foreground">
                       {guest.email && <span>{guest.email}</span>}
                       {guest.phone && <span>{guest.phone}</span>}
-                      {guest.mealPref && <span>Menu : {guest.mealPref}</span>}
-                      {guest.plusOneName && <span>+ {guest.plusOneName}</span>}
+                      {guest.mealPref && <span>{guest.mealPref}</span>}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {guest.ceremonyAssignments.map((a) => {
@@ -646,47 +636,14 @@ function GuestForm({
           />
         </div>
         <div>
-          <Label className="text-xs">Menu / Préférence</Label>
+          <Label className="text-xs">Observation</Label>
           <Input
             value={form.mealPref}
             onChange={(e) => onFormChange("mealPref", e.target.value)}
-            placeholder="Végétarien, sans gluten…"
+            placeholder="Ne mange pas de viande, allergie…"
             className="mt-1 h-8 text-sm"
           />
         </div>
-
-        {isCouple && (
-          <>
-            <div>
-              <Label className="text-xs">Nom accompagnant</Label>
-              <Input
-                value={form.plusOneName}
-                onChange={(e) => onFormChange("plusOneName", e.target.value)}
-                placeholder="Prénom Nom"
-                className="mt-1 h-8 text-sm"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">E-mail accompagnant</Label>
-              <Input
-                value={form.plusOneEmail}
-                onChange={(e) => onFormChange("plusOneEmail", e.target.value)}
-                placeholder="email@exemple.com"
-                type="email"
-                className="mt-1 h-8 text-sm"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Tél. accompagnant</Label>
-              <Input
-                value={form.plusOnePhone}
-                onChange={(e) => onFormChange("plusOnePhone", e.target.value)}
-                placeholder="+243 "
-                className="mt-1 h-8 text-sm"
-              />
-            </div>
-          </>
-        )}
       </div>
 
       {ceremonies.length > 0 && (
