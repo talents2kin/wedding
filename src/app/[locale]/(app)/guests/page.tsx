@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { GuestManager, type Ceremony, type Guest, type GuestGroup } from "@/components/app/guest-manager";
+import { ImportSection } from "@/components/app/import-section";
 
 export default async function GuestsPage() {
   const session = await auth();
@@ -69,11 +70,14 @@ export default async function GuestsPage() {
   return (
     <div className="flex flex-col">
       <header className="border-b border-border px-8 py-6">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">Invités</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {guests.length} / {coupleAccount.guestCap} invités
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold leading-tight">Invités</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {guests.length} / {coupleAccount.guestCap} invités
+            </p>
+          </div>
+          <ImportSection weddingId={wedding.id} />
         </div>
       </header>
 
