@@ -36,9 +36,25 @@ export default async function DashboardPage() {
 
   const { wedding } = coupleAccount;
 
-  const rsvpConfirmed = await db.guestCeremony.count({
-    where: { ceremony: { weddingId: wedding.id }, rsvp: "CONFIRMED" },
-  });
+  const [rsvpConfirmed, ceremoniesWithRsvp] = await Promise.all([
+    db.guestCeremony.count({
+      where: { ceremony: { weddingId: wedding.id }, rsvp: "CONFIRMED" },
+    }),
+    db.ceremony.findMany({
+      where: { weddingId: wedding.id },
+      orderBy: { position: "asc" },
+      include: {
+        _count: {
+          select: {
+            guestAssignments: true,
+          },
+        },
+        guestAssignments: {
+          select: { rsvp: true },
+        },
+      },
+    }),
+  ]);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const today = new Date();
@@ -61,6 +77,18 @@ export default async function DashboardPage() {
   const rsvpPct = guests > 0 ? Math.round((rsvpConfirmed / guests) * 100) : null;
 
   const isNewWedding = ceremonies === 0;
+
+  const ceremonyRsvpRows = ceremoniesWithRsvp.map((c) => {
+    const label =
+      c.type === "CUSTOM"
+        ? c.customLabel ?? "Personnalisé"
+        : { COUTUMIER: "Coutumier", CIVIL: "Civil", RELIGIEUX: "Religieux" }[c.type];
+    const confirmed = c.guestAssignments.filter((a) => a.rsvp === "CONFIRMED").length;
+    const declined = c.guestAssignments.filter((a) => a.rsvp === "DECLINED").length;
+    const pending = c.guestAssignments.filter((a) => a.rsvp === "PENDING").length;
+    const total = c._count.guestAssignments;
+    return { id: c.id, label, confirmed, declined, pending, total };
+  });
 
   // ── Getting-started steps (shown when no ceremonies yet) ─────────────────
   const steps = [
@@ -196,6 +224,37 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Per-ceremony RSVP breakdown ──────────────────────────────── */}
+        {ceremonyRsvpRows.length > 0 && (
+          <div className="mt-8">
+            <h2 className="mb-4 text-sm font-semibold">RSVP par cérémonie</h2>
+            <div className="overflow-hidden rounded-xl border border-border bg-background">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="px-6 py-3 text-left">Cérémonie</th>
+                    <th className="px-4 py-3 text-center">Invités</th>
+                    <th className="px-4 py-3 text-center text-emerald-700">Confirmés</th>
+                    <th className="px-4 py-3 text-center text-destructive">Déclinés</th>
+                    <th className="px-4 py-3 text-center">En attente</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {ceremonyRsvpRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-6 py-3 font-medium">{row.label}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">{row.total}</td>
+                      <td className="px-4 py-3 text-center tabular-nums font-medium text-emerald-700">{row.confirmed}</td>
+                      <td className="px-4 py-3 text-center tabular-nums font-medium text-destructive">{row.declined}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">{row.pending}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* ── Getting-started guide (while no ceremonies) ──────────────── */}
         {isNewWedding && (

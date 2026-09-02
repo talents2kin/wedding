@@ -205,6 +205,43 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
     });
   }
 
+  async function cycleRsvp(guestId: string, ceremonyId: string, current: string) {
+    const next = current === "PENDING" ? "CONFIRMED" : current === "CONFIRMED" ? "DECLINED" : "PENDING";
+    // Optimistic update
+    setGuests((prev) =>
+      prev.map((g) =>
+        g.id !== guestId
+          ? g
+          : {
+              ...g,
+              ceremonyAssignments: g.ceremonyAssignments.map((a) =>
+                a.ceremonyId === ceremonyId ? { ...a, rsvp: next } : a
+              ),
+            }
+      )
+    );
+    const res = await fetch("/api/rsvp", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guestId, ceremonyId, rsvp: next }),
+    });
+    if (!res.ok) {
+      // Rollback
+      setGuests((prev) =>
+        prev.map((g) =>
+          g.id !== guestId
+            ? g
+            : {
+                ...g,
+                ceremonyAssignments: g.ceremonyAssignments.map((a) =>
+                  a.ceremonyId === ceremonyId ? { ...a, rsvp: current } : a
+                ),
+              }
+        )
+      );
+    }
+  }
+
   async function deleteGuest(id: string) {
     startTransition(async () => {
       const res = await fetch(`/api/guest/${id}`, { method: "DELETE" });
@@ -438,17 +475,20 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
                       {guest.ceremonyAssignments.map((a) => {
                         const c = initialCeremonies.find((x) => x.id === a.ceremonyId);
                         return c ? (
-                          <span
+                          <button
                             key={a.ceremonyId}
+                            type="button"
+                            title="Cliquer pour changer le statut RSVP"
+                            onClick={() => cycleRsvp(guest.id, a.ceremonyId, a.rsvp)}
                             className={cn(
-                              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                              "rounded-full px-2 py-0.5 text-[11px] font-medium transition-opacity hover:opacity-70",
                               a.rsvp === "CONFIRMED" && "bg-emerald-500/10 text-emerald-700",
                               a.rsvp === "DECLINED" && "bg-destructive/10 text-destructive",
                               a.rsvp === "PENDING" && "bg-muted text-muted-foreground"
                             )}
                           >
                             {ceremonyLabel(c)} · {RSVP_LABELS[a.rsvp] ?? a.rsvp}
-                          </span>
+                          </button>
                         ) : null;
                       })}
                       {guest.groupMemberships.map((m) => {
