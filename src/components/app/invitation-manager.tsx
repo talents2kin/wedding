@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Send, Lock, CheckCircle2, XCircle, Clock, RotateCcw, Eye, ChevronRight, Mail, MessageSquare, Phone } from "lucide-react";
+import { Send, Lock, CheckCircle2, XCircle, Clock, RotateCcw, ChevronRight, Mail, MessageSquare, Phone, Download, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -170,6 +170,22 @@ export function InvitationManager({
       }
       setSelectedGuestIds([]);
     });
+  }
+
+  function downloadPdf(guestId: string, guestName: string, ceremonyId: string, templateId: string) {
+    const params = new URLSearchParams({ guestId, ceremonyId, templateId });
+    const a = document.createElement("a");
+    a.href = `/api/pdf?${params}`;
+    a.download = `invitation_${guestName.replace(/\s+/g, "_")}.pdf`;
+    a.click();
+  }
+
+  function downloadBulkZip(ceremonyId: string, templateId: string) {
+    const params = new URLSearchParams({ ceremonyId, templateId });
+    const a = document.createElement("a");
+    a.href = `/api/pdf/bulk?${params}`;
+    a.download = "invitations.zip";
+    a.click();
   }
 
   async function resend(inv: Invitation) {
@@ -461,6 +477,35 @@ export function InvitationManager({
 
       {/* ── STATUTS tab ───────────────────────────────────────────────────── */}
       {tab === "status" && (
+        <div className="flex flex-col gap-4">
+          {/* Bulk download per ceremony */}
+          {invitations.length > 0 && (() => {
+            const ceremoniesWithInvitations = ceremonies.filter((c) =>
+              invitations.some((inv) => inv.ceremonyId === c.id)
+            );
+            if (ceremoniesWithInvitations.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background px-5 py-3">
+                <Archive className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground mr-2">Télécharger en masse :</span>
+                {ceremoniesWithInvitations.map((c) => {
+                  const firstInv = invitations.find((inv) => inv.ceremonyId === c.id);
+                  if (!firstInv) return null;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => downloadBulkZip(c.id, firstInv.templateId)}
+                      className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <Download className="h-3 w-3" />
+                      {ceremonyLabel(c)} (.zip)
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
         <div className="overflow-hidden rounded-xl border border-border bg-background">
           {invitations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -510,16 +555,25 @@ export function InvitationManager({
                         {inv.sentAt ? formatDate(inv.sentAt) : "—"}
                       </td>
                       <td className="px-4 py-3">
-                        {inv.status === "FAILED" && (
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => resend(inv)}
-                            disabled={isPending}
+                            onClick={() => downloadPdf(inv.guestId, guest?.name ?? inv.guestId, inv.ceremonyId, inv.templateId)}
                             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                            title="Télécharger PDF"
                           >
-                            <RotateCcw className="h-3 w-3" />
-                            Renvoyer
+                            <Download className="h-3 w-3" />
                           </button>
-                        )}
+                          {inv.status === "FAILED" && (
+                            <button
+                              onClick={() => resend(inv)}
+                              disabled={isPending}
+                              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Renvoyer
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -527,6 +581,7 @@ export function InvitationManager({
               </tbody>
             </table>
           )}
+        </div>
         </div>
       )}
     </div>
