@@ -23,6 +23,8 @@ export type Ceremony = {
 export type Guest = {
   id: string;
   name: string;
+  guestType: "SINGLETON" | "COUPLE";
+  gender: "MR" | "MME" | null;
   phone: string | null;
   email: string | null;
   mealPref: string | null;
@@ -42,6 +44,8 @@ export type GuestGroup = {
 
 type GuestFormState = {
   name: string;
+  guestType: "SINGLETON" | "COUPLE";
+  gender: "MR" | "MME" | null;
   phone: string;
   email: string;
   mealPref: string;
@@ -52,7 +56,9 @@ type GuestFormState = {
 
 const BLANK_GUEST: GuestFormState = {
   name: "",
-  phone: "",
+  guestType: "SINGLETON",
+  gender: "MR",
+  phone: "+243 ",
   email: "",
   mealPref: "",
   plusOneName: "",
@@ -130,7 +136,9 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
     setEditingId(guest.id);
     setEditForm({
       name: guest.name,
-      phone: guest.phone ?? "",
+      guestType: guest.guestType,
+      gender: guest.gender,
+      phone: guest.phone ?? "+243 ",
       email: guest.email ?? "",
       mealPref: guest.mealPref ?? "",
       plusOneName: guest.plusOneName ?? "",
@@ -154,7 +162,7 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           weddingId,
-          ...cleanForm(form),
+          ...buildPayload(form),
           ...(addCeremonyIds.length > 0 && { ceremonyIds: addCeremonyIds }),
         }),
       });
@@ -183,7 +191,7 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
       const res = await fetch(`/api/guest/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...cleanForm(editForm), ceremonyIds: editCeremonyIds }),
+        body: JSON.stringify({ ...buildPayload(editForm), ceremonyIds: editCeremonyIds }),
       });
       if (!res.ok) return;
       const updated = await res.json();
@@ -422,7 +430,14 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
               ) : (
                 <li key={guest.id} className="flex items-start gap-4 px-6 py-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">{guest.name}</p>
+                    <p className="font-medium">
+                      {guest.guestType === "SINGLETON" && guest.gender && (
+                        <span className="text-muted-foreground mr-1">
+                          {guest.gender === "MR" ? "M." : "Mme"}
+                        </span>
+                      )}
+                      {guest.name}
+                    </p>
                     <div className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[13px] text-muted-foreground">
                       {guest.email && <span>{guest.email}</span>}
                       {guest.phone && <span>{guest.phone}</span>}
@@ -555,8 +570,51 @@ function GuestForm({
   isPending,
   submitLabel,
 }: GuestFormProps) {
+  const isCouple = form.guestType === "COUPLE";
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Type + gender toggles */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+          {(["SINGLETON", "COUPLE"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onFormChange("guestType", t)}
+              className={cn(
+                "px-3 py-1.5 transition-colors",
+                form.guestType === t
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {t === "SINGLETON" ? "Individuel" : "Couple"}
+            </button>
+          ))}
+        </div>
+
+        {!isCouple && (
+          <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+            {(["MR", "MME"] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => onFormChange("gender", g)}
+                className={cn(
+                  "px-3 py-1.5 transition-colors",
+                  form.gender === g
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {g === "MR" ? "M." : "Mme"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
           <Label className="text-xs">Nom *</Label>
@@ -583,7 +641,7 @@ function GuestForm({
           <Input
             value={form.phone}
             onChange={(e) => onFormChange("phone", e.target.value)}
-            placeholder="+33 6 00 00 00 00"
+            placeholder="+243 "
             className="mt-1 h-8 text-sm"
           />
         </div>
@@ -596,17 +654,18 @@ function GuestForm({
             className="mt-1 h-8 text-sm"
           />
         </div>
-        <div>
-          <Label className="text-xs">Accompagnant</Label>
-          <Input
-            value={form.plusOneName}
-            onChange={(e) => onFormChange("plusOneName", e.target.value)}
-            placeholder="Prénom Nom"
-            className="mt-1 h-8 text-sm"
-          />
-        </div>
-        {form.plusOneName && (
+
+        {isCouple && (
           <>
+            <div>
+              <Label className="text-xs">Nom accompagnant</Label>
+              <Input
+                value={form.plusOneName}
+                onChange={(e) => onFormChange("plusOneName", e.target.value)}
+                placeholder="Prénom Nom"
+                className="mt-1 h-8 text-sm"
+              />
+            </div>
             <div>
               <Label className="text-xs">E-mail accompagnant</Label>
               <Input
@@ -622,7 +681,7 @@ function GuestForm({
               <Input
                 value={form.plusOnePhone}
                 onChange={(e) => onFormChange("plusOnePhone", e.target.value)}
-                placeholder="+33 6 00 00 00 00"
+                placeholder="+243 "
                 className="mt-1 h-8 text-sm"
               />
             </div>
@@ -709,8 +768,13 @@ function GuestForm({
 // Utility
 // ---------------------------------------------------------------------------
 
-function cleanForm(form: GuestFormState): Record<string, string | undefined> {
-  return Object.fromEntries(
-    Object.entries(form).map(([k, v]) => [k, v.trim() || undefined])
-  );
+function buildPayload(form: GuestFormState) {
+  const { guestType, gender, ...textFields } = form;
+  return {
+    guestType,
+    gender: guestType === "SINGLETON" ? gender : null,
+    ...Object.fromEntries(
+      Object.entries(textFields).map(([k, v]) => [k, (v as string).trim() || undefined])
+    ),
+  };
 }

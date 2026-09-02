@@ -45,6 +45,8 @@ export default async function PlannerGuestsPage({
   const serializedGuests: Guest[] = guests.map((g) => ({
     id: g.id,
     name: g.name,
+    guestType: g.guestType as Guest["guestType"],
+    gender: g.gender as Guest["gender"],
     phone: g.phone,
     email: g.email,
     mealPref: g.mealPref,
