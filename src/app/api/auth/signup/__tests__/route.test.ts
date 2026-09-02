@@ -9,6 +9,9 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
     },
+    coupleAccount: {
+      create: vi.fn(),
+    },
   },
 }));
 

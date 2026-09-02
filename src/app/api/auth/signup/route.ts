@@ -33,7 +33,12 @@ export async function POST(req: NextRequest) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   const user = await db.user.create({
-    data: { name, email, passwordHash },
+    data: {
+      name,
+      email,
+      passwordHash,
+      coupleAccount: { create: { guestCap: 50, templateLimit: 1 } },
+    },
     select: { id: true, email: true, name: true, createdAt: true },
   });
 

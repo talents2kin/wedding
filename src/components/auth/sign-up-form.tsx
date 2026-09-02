@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -40,7 +41,14 @@ export function SignUpForm() {
       return;
     }
 
-    router.push("/dashboard");
+    const result = await signIn("credentials", { email, password, redirect: false });
+    if (!result?.ok) {
+      setError(t("errorInvalid"));
+      setLoading(false);
+      return;
+    }
+
+    router.push("/onboarding");
   }
 
   return (
