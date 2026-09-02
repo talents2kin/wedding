@@ -7,6 +7,7 @@ const signUpSchema = z.object({
   name: z.string().min(1),
   email: z.email(),
   password: z.string().min(8),
+  role: z.enum(["couple", "planner"]).default("couple"),
 });
 
 export async function POST(req: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, email, password } = result.data;
+  const { name, email, password, role } = result.data;
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
@@ -32,13 +33,13 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  const accountData =
+    role === "planner"
+      ? { plannerAccount: { create: {} } }
+      : { coupleAccount: { create: { guestCap: 50, templateLimit: 1 } } };
+
   const user = await db.user.create({
-    data: {
-      name,
-      email,
-      passwordHash,
-      coupleAccount: { create: { guestCap: 50, templateLimit: 1 } },
-    },
+    data: { name, email, passwordHash, ...accountData },
     select: { id: true, email: true, name: true, createdAt: true },
   });
 

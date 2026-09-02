@@ -7,10 +7,14 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+type Role = "couple" | "planner";
 
 export function SignUpForm() {
   const t = useTranslations("auth.signUp");
   const router = useRouter();
+  const [role, setRole] = useState<Role>("couple");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +31,7 @@ export function SignUpForm() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, role }),
     });
 
     if (res.status === 409) {
@@ -48,11 +52,33 @@ export function SignUpForm() {
       return;
     }
 
-    router.push("/onboarding");
+    router.push(role === "planner" ? "/planner/onboarding" : "/onboarding");
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* Role selector */}
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("role")}</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["couple", "planner"] as Role[]).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRole(r)}
+              className={cn(
+                "rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
+                role === r
+                  ? "border-primary bg-primary/8 text-foreground"
+                  : "border-border bg-transparent text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {r === "couple" ? t("roleCouple") : t("rolePlanner")}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name">{t("name")}</Label>
         <Input id="name" name="name" type="text" required autoComplete="name" />

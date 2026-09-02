@@ -1,50 +1,46 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CreateWeddingForm } from "@/components/app/create-wedding-form";
-import { Heart } from "lucide-react";
+import { CreatePlannerWeddingForm } from "@/components/app/create-planner-wedding-form";
+import { Briefcase } from "lucide-react";
 
-export default async function OnboardingPage() {
+export default async function PlannerOnboardingPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
-  // Planners use their own onboarding
   const plannerAccount = await db.plannerAccount.findUnique({
     where: { userId: session.user.id },
+    include: { _count: { select: { weddings: true } } },
   });
-  if (plannerAccount) redirect("/planner/onboarding");
 
-  // Already has a wedding — skip onboarding
-  const coupleAccount = await db.coupleAccount.findUnique({
-    where: { userId: session.user.id },
-    include: { wedding: true },
-  });
-  if (coupleAccount?.wedding) redirect("/dashboard");
+  // Not a planner → send to couple onboarding
+  if (!plannerAccount) redirect("/onboarding");
+
+  // At or above limit → cannot create more, go to list (upgrade prompt is there)
+  if (plannerAccount._count.weddings >= plannerAccount.weddingLimit) redirect("/weddings");
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Heart className="h-6 w-6" />
+            <Briefcase className="h-6 w-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Créez votre mariage
+            Votre premier mariage
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            En quelques secondes. Vous pourrez ajouter vos cérémonies et vos
-            invités ensuite.
+            Créez le premier mariage que vous organisez. Vous pourrez en ajouter
+            d&apos;autres ensuite.
           </p>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl border border-border bg-background p-8 shadow-sm">
-          <CreateWeddingForm />
+          <CreatePlannerWeddingForm />
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Gratuit pour commencer · Aucune carte bancaire requise
+          Offre gratuite · 1 mariage actif inclus
         </p>
       </div>
     </main>

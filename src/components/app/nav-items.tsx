@@ -5,10 +5,15 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, CalendarDays, Users, Settings, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const mainNav = [
+const coupleNav = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/ceremonies", label: "Cérémonies", icon: CalendarDays, disabled: true },
   { href: "/guests", label: "Invités", icon: Users, disabled: true },
+] as const;
+
+const plannerNav = [
+  { href: "/weddings", label: "Mes mariages", icon: LayoutDashboard },
+  { href: "/weddings/calendar", label: "Calendrier", icon: CalendarDays },
 ] as const;
 
 const bottomNav = [
@@ -48,13 +53,14 @@ function NavLink({ href, label, icon: Icon, disabled }: NavEntry) {
   );
 }
 
-export function MainNavItems() {
+export function MainNavItems({ isPlanner = false }: { isPlanner?: boolean }) {
+  const nav = isPlanner ? plannerNav : coupleNav;
   return (
     <nav className="flex flex-col gap-0.5">
       <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
         Principal
       </p>
-      {mainNav.map((item) => (
+      {nav.map((item) => (
         <NavLink key={item.href} {...item} />
       ))}
     </nav>

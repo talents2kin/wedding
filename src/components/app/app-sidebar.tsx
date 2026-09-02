@@ -1,5 +1,6 @@
 import { Heart, ChevronDown } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { MainNavItems, BottomNavItems } from "./nav-items";
 import { SignOutButton } from "./sign-out-button";
 
@@ -13,6 +14,10 @@ export async function AppSidebar() {
     .join("")
     .toUpperCase();
 
+  const isPlanner = session?.user?.id
+    ? !!(await db.plannerAccount.findUnique({ where: { userId: session.user.id } }))
+    : false;
+
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar">
       {/* Brand */}
@@ -25,7 +30,7 @@ export async function AppSidebar() {
 
       {/* Main navigation */}
       <div className="flex-1 overflow-y-auto px-3 py-2">
-        <MainNavItems />
+        <MainNavItems isPlanner={isPlanner} />
       </div>
 
       {/* Bottom links */}
@@ -41,7 +46,9 @@ export async function AppSidebar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium leading-none">{name}</p>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">Compte couple</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              {isPlanner ? "Organisateur" : "Compte couple"}
+            </p>
           </div>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </div>

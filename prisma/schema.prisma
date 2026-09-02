@@ -84,13 +84,15 @@ model CoupleAccount {
 
 /// Professional planner account. One per user. Multiple weddings.
 model PlannerAccount {
-  id     String @id @default(cuid())
-  userId String @unique
+  id           String @id @default(cuid())
+  userId       String @unique
+  weddingLimit Int    @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddings Wedding[]
 }
 
 // ---------------------------------------------------------------------------
@@ -98,22 +100,25 @@ model PlannerAccount {
 // ---------------------------------------------------------------------------
 
 model Wedding {
-  id              String   @id @default(cuid())
-  name            String
-  date            DateTime
-  coupleAccountId String   @unique
+  id               String  @id @default(cuid())
+  name             String
+  date             DateTime
+  coupleAccountId  String? @unique
+  plannerAccountId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  coupleAccount CoupleAccount @relation(fields: [coupleAccountId], references: [id], onDelete: Cascade)
-  ceremonies    Ceremony[]
-  guests        Guest[]
+  coupleAccount  CoupleAccount?  @relation(fields: [coupleAccountId], references: [id], onDelete: Cascade)
+  plannerAccount PlannerAccount? @relation(fields: [plannerAccountId], references: [id], onDelete: Cascade)
+  ceremonies     Ceremony[]
+  guests         Guest[]
 }
 
 model Ceremony {
-  id        String @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
+  date      DateTime?
   weddingId String
 
   createdAt DateTime @default(now())

@@ -9,9 +9,6 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
     },
-    coupleAccount: {
-      create: vi.fn(),
-    },
   },
 }));
 
@@ -38,7 +35,7 @@ describe("POST /api/auth/signup", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 201 and the new user when input is valid", async () => {
+  it("returns 201 and the new user when input is valid (default couple)", async () => {
     vi.mocked(db.user.findUnique).mockResolvedValue(null);
     vi.mocked(db.user.create).mockResolvedValue({
       id: "cuid_1",
@@ -57,6 +54,38 @@ describe("POST /api/auth/signup", () => {
     const data = await res.json();
     expect(data.email).toBe("alice@example.com");
     expect(data).not.toHaveProperty("passwordHash");
+
+    // Should create a coupleAccount nested inside user.create
+    expect(vi.mocked(db.user.create).mock.calls[0][0].data).toMatchObject({
+      coupleAccount: { create: expect.any(Object) },
+    });
+  });
+
+  it("returns 201 and creates plannerAccount when role=planner", async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue(null);
+    vi.mocked(db.user.create).mockResolvedValue({
+      id: "cuid_2",
+      email: "planner@example.com",
+      name: "Bob",
+      createdAt: new Date("2026-01-01"),
+    } as never);
+
+    const res = await POST(makeRequest({
+      name: "Bob",
+      email: "planner@example.com",
+      password: "password123",
+      role: "planner",
+    }));
+
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.email).toBe("planner@example.com");
+
+    const createCall = vi.mocked(db.user.create).mock.calls[0][0].data;
+    expect(createCall).toMatchObject({
+      plannerAccount: { create: expect.any(Object) },
+    });
+    expect(createCall).not.toHaveProperty("coupleAccount");
   });
 
   it("returns 409 when the email is already taken", async () => {

@@ -15,6 +15,12 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
 
+  // Planners have no couple account — send them to their own section
+  const plannerAccount = await db.plannerAccount.findUnique({
+    where: { userId: session.user.id },
+  });
+  if (plannerAccount) redirect("/weddings");
+
   const coupleAccount = await db.coupleAccount.findUnique({
     where: { userId: session.user.id },
     include: {

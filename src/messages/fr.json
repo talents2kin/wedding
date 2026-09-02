@@ -38,6 +38,9 @@
       "submit": "Créer mon compte",
       "hasAccount": "Déjà un compte ?",
       "signInLink": "Se connecter",
+      "role": "Je suis…",
+      "roleCouple": "Un couple",
+      "rolePlanner": "Un organisateur",
       "errorEmailTaken": "Cette adresse e-mail est déjà utilisée",
       "errorInvalid": "Informations invalides"
     },
