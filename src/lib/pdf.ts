@@ -22,6 +22,17 @@ export type PdfCeremony = {
 };
 
 // ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+
+const BURGUNDY = rgb(0.50, 0.07, 0.12);
+const CREAM    = rgb(0.98, 0.96, 0.92);
+const DARK     = rgb(0.12, 0.10, 0.11);
+const MEDIUM   = rgb(0.35, 0.30, 0.30);
+const LIGHT    = rgb(0.65, 0.60, 0.58);
+const GOLD     = rgb(0.70, 0.55, 0.18);
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -32,12 +43,30 @@ function ceremonyLabel(c: PdfCeremony): string {
 
 function formatDate(d: Date | null): string {
   if (!d) return "";
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    .format(d)
+    .toUpperCase();
 }
 
 function genderPrefix(guest: PdfGuest): string {
   if (guest.guestType !== "SINGLETON") return "";
-  return guest.gender === "MR" ? "M." : guest.gender === "MME" ? "Mme" : "";
+  return guest.gender === "MR" ? "Monsieur" : guest.gender === "MME" ? "Madame" : "";
+}
+
+type EmbeddedFont = Awaited<ReturnType<PDFDocument["embedFont"]>>;
+type Page = ReturnType<PDFDocument["addPage"]>;
+type Color = ReturnType<typeof rgb>;
+
+function drawCentered(page: Page, text: string, y: number, size: number, font: EmbeddedFont, color: Color, pageWidth: number) {
+  const x = (pageWidth - font.widthOfTextAtSize(text, size)) / 2;
+  page.drawText(text, { x, y, size, font, color });
+}
+
+function drawDivider(page: Page, y: number, pageWidth: number, margin: number, color: Color) {
+  const cx = pageWidth / 2;
+  page.drawLine({ start: { x: margin, y }, end: { x: cx - 20, y }, thickness: 0.5, color });
+  page.drawRectangle({ x: cx - 4, y: y - 4, width: 8, height: 8, color });
+  page.drawLine({ start: { x: cx + 20, y }, end: { x: pageWidth - margin, y }, thickness: 0.5, color });
 }
 
 // ---------------------------------------------------------------------------
@@ -51,8 +80,9 @@ export function qrPayload(guestId: string, ceremonyId: string): string {
 async function buildQrPng(guestId: string, ceremonyId: string): Promise<Buffer> {
   return QRCode.toBuffer(qrPayload(guestId, ceremonyId), {
     type: "png",
-    width: 180,
+    width: 100,
     margin: 1,
+    color: { dark: "#7f1220", light: "#f9f4eb" },
     errorCorrectionLevel: "M",
   });
 }
@@ -70,117 +100,133 @@ export async function generateInvitationPdf(
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
 
-  // A4 page: 595 × 842 pt
+  // A4 portrait: 595 × 842 pt
   const page = doc.addPage([595, 842]);
   const { width, height } = page.getSize();
+  const margin = 52;
 
-  const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const fRegular    = await doc.embedFont(StandardFonts.TimesRoman);
+  const fBold       = await doc.embedFont(StandardFonts.TimesRomanBold);
+  const fItalic     = await doc.embedFont(StandardFonts.TimesRomanItalic);
+  const fBoldItalic = await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
+  const fHelv       = await doc.embedFont(StandardFonts.Helvetica);
+  const fHelvBold   = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  const margin = 56;
-  const contentWidth = width - margin * 2;
+  // ── Cream background ──────────────────────────────────────────────────────
+  page.drawRectangle({ x: 0, y: 0, width, height, color: CREAM });
 
-  // ── Background tint ──────────────────────────────────────────────────────
-  page.drawRectangle({
-    x: 0, y: height - 120,
-    width, height: 120,
-    color: rgb(0.06, 0.08, 0.12),
-  });
+  // ── Top border band ───────────────────────────────────────────────────────
+  page.drawRectangle({ x: 0, y: height - 6, width, height: 6, color: BURGUNDY });
+  page.drawRectangle({ x: 0, y: height - 9, width, height: 1.5, color: GOLD });
 
-  // ── Header: ceremony label + date ────────────────────────────────────────
-  const cerLabel = ceremonyLabel(ceremony).toUpperCase();
-  page.drawText(cerLabel, {
-    x: margin, y: height - 50,
-    size: 10, font: fontBold,
-    color: rgb(0.6, 0.65, 0.75),
-  });
+  // ── Bottom border band ────────────────────────────────────────────────────
+  page.drawRectangle({ x: 0, y: 0, width, height: 6, color: BURGUNDY });
+  page.drawRectangle({ x: 0, y: 6, width, height: 1.5, color: GOLD });
 
-  const dateStr = formatDate(ceremony.date);
-  if (dateStr) {
-    page.drawText(dateStr, {
-      x: margin, y: height - 68,
-      size: 13, font: fontRegular,
-      color: rgb(0.9, 0.9, 0.92),
-    });
-  }
+  // ── "VOTRE INVITATION" header ─────────────────────────────────────────────
+  drawCentered(page, "VOTRE  INVITATION", height - 36, 9, fHelvBold, BURGUNDY, width);
 
-  if (ceremony.venue) {
-    page.drawText(ceremony.venue, {
-      x: margin, y: height - 88,
-      size: 11, font: fontRegular,
-      color: rgb(0.65, 0.68, 0.75),
-    });
-  }
-
-  // ── Guest name ───────────────────────────────────────────────────────────
-  const prefix = genderPrefix(guest);
-  const guestLine = prefix ? `${prefix} ${guest.name}` : guest.name;
-  page.drawText(guestLine, {
-    x: margin, y: height - 165,
-    size: 28, font: fontBold,
-    color: rgb(0.08, 0.10, 0.14),
-  });
-
-  // Divider
+  // Thin rule under header
   page.drawLine({
-    start: { x: margin, y: height - 185 },
-    end: { x: margin + 60, y: height - 185 },
-    thickness: 3,
-    color: rgb(0.36, 0.49, 0.98),
+    start: { x: margin + 30, y: height - 44 },
+    end:   { x: width - margin - 30, y: height - 44 },
+    thickness: 0.5, color: BURGUNDY,
   });
 
-  // ── Body text ────────────────────────────────────────────────────────────
+  // ── Guest honorific + name ────────────────────────────────────────────────
+  const prefix = genderPrefix(guest);
+  const honorific = prefix || (guest.guestType === "COUPLE" ? "Monsieur & Madame" : "");
+  if (honorific) {
+    drawCentered(page, honorific, height - 76, 11, fItalic, LIGHT, width);
+  }
+
+  const guestNameUpper = guest.name.toUpperCase();
+  drawCentered(page, guestNameUpper, height - 105, 18, fBoldItalic, DARK, width);
+
+  // Dotted line under guest name
+  const nameW  = fBoldItalic.widthOfTextAtSize(guestNameUpper, 18);
+  const dotX0  = (width - nameW) / 2;
+  for (let dx = 0; dx < nameW; dx += 5) {
+    page.drawCircle({ x: dotX0 + dx, y: height - 114, size: 0.8, color: MEDIUM });
+  }
+
+  // ── Section divider ───────────────────────────────────────────────────────
+  drawDivider(page, height - 136, width, margin, BURGUNDY);
+
+  // ── Opening sentence ──────────────────────────────────────────────────────
+  drawCentered(page, "Avec la grâce de Dieu et entourés de leurs familles,", height - 162, 11, fItalic, MEDIUM, width);
+
+  // ── Sender / couple name — large elegant italic ───────────────────────────
+  drawCentered(page, senderName, height - 202, 28, fBoldItalic, BURGUNDY, width);
+
+  // ── Body text (centered) ──────────────────────────────────────────────────
   const vars: TemplateVars = {
     guestName: guest.name,
     genderPrefix: prefix,
     ceremonyLabel: ceremonyLabel(ceremony),
-    date: dateStr,
+    date: formatDate(ceremony.date),
     venue: ceremony.venue ?? "",
     senderName,
   };
   const bodyText = renderBody(customBody ?? template.bodyText, vars);
+  const bodyMaxW = width - margin * 2 - 30;
+  const bodyLines = wrapText(bodyText, fItalic, 12, bodyMaxW);
 
-  // Word-wrap body text into lines
-  const maxLineWidth = contentWidth - 200; // leave room for QR code
-  const bodyLines = wrapText(bodyText, fontRegular, 13, maxLineWidth);
-  let y = height - 220;
+  let y = height - 242;
   for (const line of bodyLines) {
-    if (y < 120) break;
-    page.drawText(line, { x: margin, y, size: 13, font: fontRegular, color: rgb(0.2, 0.22, 0.27) });
+    if (y < 220) break;
+    if (line.trim() === "") { y -= 10; continue; }
+    drawCentered(page, line, y, 12, fItalic, DARK, width);
+    y -= 19;
+  }
+
+  // ── Divider before ceremony details ──────────────────────────────────────
+  y -= 14;
+  drawDivider(page, y, width, margin, GOLD);
+  y -= 26;
+
+  // ── Ceremony type label ───────────────────────────────────────────────────
+  drawCentered(page, ceremonyLabel(ceremony).toUpperCase(), y, 8, fHelvBold, LIGHT, width);
+  y -= 20;
+
+  // ── Date ──────────────────────────────────────────────────────────────────
+  const dateStr = formatDate(ceremony.date);
+  if (dateStr) {
+    drawCentered(page, dateStr, y, 20, fBold, DARK, width);
+    y -= 30;
+  }
+
+  // ── Venue ─────────────────────────────────────────────────────────────────
+  if (ceremony.venue) {
+    drawCentered(page, ceremony.venue, y, 12, fRegular, MEDIUM, width);
     y -= 20;
   }
 
-  // ── QR code ──────────────────────────────────────────────────────────────
-  const qrPng = await buildQrPng(guest.id, ceremony.id);
-  const qrImage = await doc.embedPng(qrPng);
-  const qrSize = 150;
-  page.drawImage(qrImage, {
-    x: width - margin - qrSize,
-    y: height - 185 - qrSize,
-    width: qrSize,
-    height: qrSize,
-  });
-
-  // QR label
-  page.drawText("Scan pour check-in", {
-    x: width - margin - qrSize,
-    y: height - 185 - qrSize - 14,
-    size: 8,
-    font: fontRegular,
-    color: rgb(0.5, 0.52, 0.58),
-  });
-
-  // ── Footer ───────────────────────────────────────────────────────────────
+  // ── "Nous vous attendons" footer section ──────────────────────────────────
+  const addrY = 108;
   page.drawLine({
-    start: { x: margin, y: 72 },
-    end: { x: width - margin, y: 72 },
-    thickness: 0.5,
-    color: rgb(0.85, 0.86, 0.88),
+    start: { x: margin + 60, y: addrY + 42 },
+    end:   { x: width - margin - 60, y: addrY + 42 },
+    thickness: 0.5, color: BURGUNDY,
   });
-  page.drawText(senderName, {
-    x: margin, y: 54,
-    size: 9, font: fontBold,
-    color: rgb(0.45, 0.48, 0.55),
+  drawCentered(page, "Nous vous attendons", addrY + 26, 10, fBoldItalic, BURGUNDY, width);
+
+  // ── QR code — bottom right ────────────────────────────────────────────────
+  const qrPng   = await buildQrPng(guest.id, ceremony.id);
+  const qrImage = await doc.embedPng(qrPng);
+  const qrSize  = 68;
+  const qrX     = width - margin - qrSize;
+  const qrY     = 18;
+
+  page.drawRectangle({
+    x: qrX - 3, y: qrY - 3,
+    width: qrSize + 6, height: qrSize + 6,
+    borderColor: BURGUNDY, borderWidth: 0.5, color: CREAM,
+  });
+  page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize });
+  page.drawText("Check-in", {
+    x: qrX + (qrSize - fHelv.widthOfTextAtSize("Check-in", 7)) / 2,
+    y: qrY - 11, size: 7, font: fHelv, color: LIGHT,
   });
 
   const bytes = await doc.save();
@@ -191,7 +237,7 @@ export async function generateInvitationPdf(
 // Simple word-wrap for pdf-lib text
 // ---------------------------------------------------------------------------
 
-function wrapText(text: string, font: Awaited<ReturnType<PDFDocument["embedFont"]>>, size: number, maxWidth: number): string[] {
+function wrapText(text: string, font: EmbeddedFont, size: number, maxWidth: number): string[] {
   const result: string[] = [];
   for (const paragraph of text.split("\n")) {
     if (paragraph.trim() === "") { result.push(""); continue; }
@@ -199,8 +245,7 @@ function wrapText(text: string, font: Awaited<ReturnType<PDFDocument["embedFont"
     let line = "";
     for (const word of words) {
       const candidate = line ? `${line} ${word}` : word;
-      const w = font.widthOfTextAtSize(candidate, size);
-      if (w > maxWidth && line) {
+      if (font.widthOfTextAtSize(candidate, size) > maxWidth && line) {
         result.push(line);
         line = word;
       } else {
