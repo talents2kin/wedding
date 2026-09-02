@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Plus, CalendarDays, Users, ArrowRight, Sparkles } from "lucide-react";
+import { Plus, CalendarDays, Users, ArrowRight, Sparkles, ListChecks } from "lucide-react";
 import Link from "next/link";
 
 type WeddingStatus = "upcoming" | "in-progress" | "past";
@@ -170,6 +170,13 @@ export default async function WeddingsPage() {
                     </div>
                   </div>
 
+                  <Link
+                    href={`/weddings/${wedding.id}/ceremonies`}
+                    className="flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <ListChecks className="h-3.5 w-3.5" />
+                    Cérémonies
+                  </Link>
                   <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
                 </li>
               );

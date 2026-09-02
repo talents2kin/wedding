@@ -115,16 +115,37 @@ model Wedding {
   guests         Guest[]
 }
 
+enum CeremonyType {
+  COUTUMIER
+  CIVIL
+  RELIGIEUX
+  CUSTOM
+}
+
 model Ceremony {
-  id        String    @id @default(cuid())
-  name      String
-  date      DateTime?
-  weddingId String
+  id          String      @id @default(cuid())
+  type        CeremonyType @default(CUSTOM)
+  customLabel String?     // display name when type = CUSTOM
+  date        DateTime?   // combined date + time (UTC)
+  venue       String?
+  position    Int         @default(0) // user-set sort order
+  weddingId   String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wedding Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  wedding          Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  guestAssignments GuestCeremony[]
+}
+
+model GuestCeremony {
+  guestId    String
+  ceremonyId String
+
+  guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
+
+  @@id([guestId, ceremonyId])
 }
 
 enum RsvpStatus {
@@ -142,5 +163,6 @@ model Guest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wedding Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  wedding           Wedding         @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  ceremonyAssignments GuestCeremony[]
 }

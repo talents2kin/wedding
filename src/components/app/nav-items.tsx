@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const coupleNav = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/ceremonies", label: "Cérémonies", icon: CalendarDays, disabled: true },
+  { href: "/ceremonies", label: "Cérémonies", icon: CalendarDays },
   { href: "/guests", label: "Invités", icon: Users, disabled: true },
 ] as const;
 
