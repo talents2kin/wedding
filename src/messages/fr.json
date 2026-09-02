@@ -190,6 +190,9 @@
         }
       }
     },
+    "cta": {
+      "headline": "Commencez dès aujourd'hui, gratuitement."
+    },
     "footer": {
       "tagline": "La plateforme de gestion des invités pour les mariages qui comptent.",
       "legalPrefix": "© {year} WeddingApp. Tous droits réservés.",
