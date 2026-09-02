@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Check, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Check, AlertTriangle, Link, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ export type Ceremony = {
   date: string | null; // ISO string
   venue: string | null;
   position: number;
+  registrationToken: string | null;
 };
 
 type FormState = {
@@ -239,6 +240,9 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
   const [, startTransition] = useTransition();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [linkPopover, setLinkPopover] = useState<{ ceremonyId: string; url: string } | null>(null);
+  const [linkLoading, setLinkLoading] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // ── Create ───────────────────────────────────────────────────────────────
 
@@ -341,6 +345,24 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
     });
   }
 
+  async function generateLink(ceremonyId: string) {
+    setLinkLoading(ceremonyId);
+    const res = await fetch(`/api/ceremony/${ceremonyId}/registration-link`, { method: "POST" });
+    setLinkLoading(null);
+    if (!res.ok) return;
+    const { url } = await res.json();
+    setCeremonies((prev) => prev.map((c) => c.id === ceremonyId ? { ...c, registrationToken: url } : c));
+    setLinkPopover({ ceremonyId, url });
+    setCopied(false);
+  }
+
+  function copyLink(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -352,6 +374,30 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
           onCancel={() => setConfirmDelete(null)}
           deleting={deleting}
         />
+      )}
+
+      {linkPopover && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Lien d&apos;inscription invité</p>
+            <button onClick={() => setLinkPopover(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+            <span className="flex-1 truncate text-xs text-muted-foreground">{linkPopover.url}</span>
+            <button
+              onClick={() => copyLink(linkPopover.url)}
+              className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? "Copié !" : "Copier"}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Partagez ce lien avec vos invités pour qu&apos;ils s&apos;inscrivent eux-mêmes.
+          </p>
+        </div>
       )}
 
       {ceremonies.length === 0 && !adding && (
@@ -424,6 +470,14 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
 
                 {/* Actions */}
                 <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => generateLink(ceremony.id)}
+                    disabled={linkLoading === ceremony.id}
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
+                    title="Lien d'inscription"
+                  >
+                    <Link className="h-3.5 w-3.5" />
+                  </button>
                   <button
                     onClick={() => { setEditingId(ceremony.id); setFormError(null); }}
                     className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted"

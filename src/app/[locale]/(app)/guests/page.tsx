@@ -66,6 +66,7 @@ export default async function GuestsPage() {
     plusOneName: g.plusOneName,
     plusOnePhone: g.plusOnePhone,
     plusOneEmail: g.plusOneEmail,
+    selfRegistered: g.selfRegistered,
     weddingId: g.weddingId,
     groupMemberships: g.groupMemberships,
     ceremonyAssignments: g.ceremonyAssignments.map((a) => ({

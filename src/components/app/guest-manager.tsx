@@ -31,6 +31,7 @@ export type Guest = {
   plusOneName: string | null;
   plusOnePhone: string | null;
   plusOneEmail: string | null;
+  selfRegistered: boolean;
   weddingId: string;
   groupMemberships: { groupId: string }[];
   ceremonyAssignments: { ceremonyId: string; rsvp: string }[];
@@ -474,13 +475,20 @@ export function GuestManager({ weddingId, initialGuests, initialGroups, initialC
               ) : (
                 <li key={guest.id} className="flex items-start gap-4 px-6 py-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">
-                      {guest.guestType === "SINGLETON" && guest.gender && (
-                        <span className="text-muted-foreground mr-1">
-                          {guest.gender === "MR" ? "M." : "Mme"}
+                    <p className="font-medium flex items-center gap-2">
+                      <span>
+                        {guest.guestType === "SINGLETON" && guest.gender && (
+                          <span className="text-muted-foreground mr-1">
+                            {guest.gender === "MR" ? "M." : "Mme"}
+                          </span>
+                        )}
+                        {guest.name}
+                      </span>
+                      {guest.selfRegistered && (
+                        <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                          En ligne
                         </span>
                       )}
-                      {guest.name}
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px] text-muted-foreground">
                       {guest.email && <span>{guest.email}</span>}
