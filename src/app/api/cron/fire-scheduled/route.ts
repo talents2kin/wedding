@@ -7,9 +7,9 @@ function ceremonyLabel(type: string, customLabel: string | null): string {
   if (customLabel) return customLabel;
   const labels: Record<string, string> = {
     CIVIL: "cérémonie civile",
-    RELIGIOUS: "cérémonie religieuse",
-    TRADITIONAL: "cérémonie traditionnelle",
-    RECEPTION: "réception",
+    RELIGIEUX: "cérémonie religieuse",
+    COUTUMIER: "cérémonie coutumière",
+    CUSTOM: "cérémonie",
   };
   return labels[type] ?? type;
 }
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
         ceremonyId: notification.ceremonyId,
         channel: notification.channel,
         templateId: notification.templateId,
-        body: notification.customBody ?? "",
+        status: "SENT",
       })),
       skipDuplicates: true,
     });

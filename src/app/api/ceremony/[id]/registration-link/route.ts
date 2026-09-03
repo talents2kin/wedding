@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     })).registrationToken!;
 
   const baseUrl = req.headers.get("origin") ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  const url = `${baseUrl}/fr/rsvp/${token}`;
+  const url = `${baseUrl}/rsvp/${token}`;
 
   return NextResponse.json({ token, url });
 }
