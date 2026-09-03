@@ -137,6 +137,7 @@ model Ceremony {
   position          Int     @default(0) // user-set sort order
   registrationToken  String? @unique    // scopes the public RSVP link
   seatingShareToken  String? @unique    // read-only seating plan share link
+  checkInToken       String? @unique    // staff mobile check-in link
   weddingId          String
 
   createdAt DateTime @default(now())
@@ -148,6 +149,7 @@ model Ceremony {
   scheduledNotifications ScheduledNotification[]
   rsvpReminders          RsvpReminder[]
   tables                 Table[]
+  checkIns               CheckIn[]
 }
 
 model GuestCeremony {
@@ -200,6 +202,7 @@ model Guest {
   invitations                    Invitation[]
   scheduledNotificationGuests    ScheduledNotificationGuest[]
   tableSeat                      TableSeat?
+  checkIns                       CheckIn[]
 }
 
 model GuestGroup {
@@ -330,6 +333,23 @@ model Table {
   wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
   seats    TableSeat[]
+}
+
+// ---------------------------------------------------------------------------
+// Domain — Check-in
+// ---------------------------------------------------------------------------
+
+/// One row per guest per ceremony: marks when they physically arrived.
+model CheckIn {
+  id         String   @id @default(cuid())
+  guestId    String
+  ceremonyId String
+  arrivedAt  DateTime @default(now())
+
+  guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, ceremonyId])
 }
 
 /// One row per seated guest. A guest can only be at one table at a time.

@@ -52,6 +52,7 @@ export default async function CeremoniesPage() {
             date: c.date?.toISOString() ?? null,
             customLabel: c.customLabel ?? null,
             venue: c.venue ?? null,
+            checkInToken: c.checkInToken ?? null,
           }))}
         />
       </main>

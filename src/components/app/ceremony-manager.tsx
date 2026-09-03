@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Check, AlertTriangle, Link, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Check, AlertTriangle, Link, Copy, QrCode, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ export type Ceremony = {
   venue: string | null;
   position: number;
   registrationToken: string | null;
+  checkInToken: string | null;
 };
 
 type FormState = {
@@ -243,6 +244,9 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
   const [linkPopover, setLinkPopover] = useState<{ ceremonyId: string; url: string } | null>(null);
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [checkInPopover, setCheckInPopover] = useState<{ ceremonyId: string; url: string } | null>(null);
+  const [checkInLoading, setCheckInLoading] = useState<string | null>(null);
+  const [checkInCopied, setCheckInCopied] = useState(false);
 
   // ── Create ───────────────────────────────────────────────────────────────
 
@@ -363,6 +367,26 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
     });
   }
 
+  async function generateCheckInLink(ceremonyId: string) {
+    setCheckInLoading(ceremonyId);
+    const res = await fetch(`/api/ceremony/${ceremonyId}/check-in-link`, { method: "POST" });
+    setCheckInLoading(null);
+    if (!res.ok) return;
+    const { url } = await res.json();
+    setCeremonies((prev) =>
+      prev.map((c) => c.id === ceremonyId ? { ...c, checkInToken: url.split("/").pop() ?? null } : c)
+    );
+    setCheckInPopover({ ceremonyId, url });
+    setCheckInCopied(false);
+  }
+
+  function copyCheckInLink(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCheckInCopied(true);
+      setTimeout(() => setCheckInCopied(false), 2000);
+    });
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -397,6 +421,40 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
           <p className="text-xs text-muted-foreground">
             Partagez ce lien avec vos invités pour qu&apos;ils s&apos;inscrivent eux-mêmes.
           </p>
+        </div>
+      )}
+
+      {checkInPopover && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Lien de check-in</p>
+            <button onClick={() => setCheckInPopover(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+            <span className="flex-1 truncate text-xs text-muted-foreground">{checkInPopover.url}</span>
+            <button
+              onClick={() => copyCheckInLink(checkInPopover.url)}
+              className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10"
+            >
+              {checkInCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {checkInCopied ? "Copié !" : "Copier"}
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Ouvrez ce lien sur le mobile du staff le jour J.
+            </p>
+            <a
+              href={checkInPopover.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Ouvrir <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </div>
       )}
 
@@ -477,6 +535,14 @@ export function CeremonyManager({ weddingId, initial }: { weddingId: string; ini
                     title="Lien d'inscription"
                   >
                     <Link className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => generateCheckInLink(ceremony.id)}
+                    disabled={checkInLoading === ceremony.id}
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
+                    title="Lien de check-in"
+                  >
+                    <QrCode className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => { setEditingId(ceremony.id); setFormError(null); }}

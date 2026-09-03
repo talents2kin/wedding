@@ -51,6 +51,7 @@ export default async function PlannerCeremoniesPage({
             date: c.date?.toISOString() ?? null,
             customLabel: c.customLabel ?? null,
             venue: c.venue ?? null,
+            checkInToken: c.checkInToken ?? null,
           }))}
         />
       </main>

@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CalendarDays, Users, CheckCircle2, ArrowLeft } from "lucide-react";
+import { CalendarDays, Users, CheckCircle2, ArrowLeft, ScanLine } from "lucide-react";
 import Link from "next/link";
 import { SenderNameEditor } from "@/components/app/sender-name-editor";
 
@@ -38,7 +38,7 @@ export default async function WeddingDashboardPage({
       ceremonies: {
         orderBy: { position: "asc" },
         include: {
-          _count: { select: { guestAssignments: true } },
+          _count: { select: { guestAssignments: true, checkIns: true } },
           guestAssignments: { select: { rsvp: true } },
         },
       },
@@ -58,6 +58,8 @@ export default async function WeddingDashboardPage({
     confirmed: c.guestAssignments.filter((a) => a.rsvp === "CONFIRMED").length,
     declined: c.guestAssignments.filter((a) => a.rsvp === "DECLINED").length,
     pending: c.guestAssignments.filter((a) => a.rsvp === "PENDING").length,
+    arrived: c._count.checkIns,
+    checkInToken: c.checkInToken,
   }));
 
   return (
@@ -148,6 +150,8 @@ export default async function WeddingDashboardPage({
                     <th className="px-4 py-3 text-center text-emerald-700">Confirmés</th>
                     <th className="px-4 py-3 text-center text-destructive">Déclinés</th>
                     <th className="px-4 py-3 text-center">En attente</th>
+                    <th className="px-4 py-3 text-center text-primary">Arrivés</th>
+                    <th className="px-4 py-3 text-center">Check-in</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -158,6 +162,21 @@ export default async function WeddingDashboardPage({
                       <td className="px-4 py-3 text-center tabular-nums font-medium text-emerald-700">{row.confirmed}</td>
                       <td className="px-4 py-3 text-center tabular-nums font-medium text-destructive">{row.declined}</td>
                       <td className="px-4 py-3 text-center tabular-nums text-muted-foreground">{row.pending}</td>
+                      <td className="px-4 py-3 text-center tabular-nums font-medium text-primary">{row.arrived}</td>
+                      <td className="px-4 py-3 text-center">
+                        {row.checkInToken ? (
+                          <Link
+                            href={`/check-in/${row.checkInToken}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <ScanLine className="h-3 w-3" />
+                            Ouvrir
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
