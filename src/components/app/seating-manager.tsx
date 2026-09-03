@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, UserCheck, UserMinus, Download, Link, Copy, Users } from "lucide-react";
+import { Plus, Trash2, UserCheck, UserMinus, Download, Link, Copy, Users, LayoutGrid, List, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,19 +34,204 @@ export type SeatingTable = {
 
 type Props = {
   weddingId: string;
+  isPaidAccount: boolean;
   ceremonies: SeatingCeremony[];
   initialTables: SeatingTable[];
   confirmedGuests: SeatingGuest[];
 };
 
+type ViewMode = "list" | "visual";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function genderLabel(g: SeatingGuest) {
+  if (g.guestType === "SINGLETON" && g.gender) return g.gender === "MR" ? "M. " : "Mme ";
+  return "";
+}
+
+// ---------------------------------------------------------------------------
+// Visual canvas sub-component
+// ---------------------------------------------------------------------------
+
+type CanvasProps = {
+  tables: SeatingTable[];
+  unseatedGuests: SeatingGuest[];
+  isPending: boolean;
+  onAssign: (guestId: string, tableId: string) => Promise<void>;
+  onUnassign: (guestId: string, tableId: string) => Promise<void>;
+};
+
+function SeatingCanvas({ tables, unseatedGuests, isPending, onAssign, onUnassign }: CanvasProps) {
+  const [dragOver, setDragOver] = useState<string | null>(null); // tableId | "pool"
+
+  function handleDragStart(e: React.DragEvent, guestId: string, sourceTableId: string) {
+    e.dataTransfer.setData("guestId", guestId);
+    e.dataTransfer.setData("sourceTableId", sourceTableId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDragOver(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(targetId);
+  }
+
+  function handleDragLeave() {
+    setDragOver(null);
+  }
+
+  async function handleDropOnTable(e: React.DragEvent, tableId: string) {
+    e.preventDefault();
+    setDragOver(null);
+    const guestId = e.dataTransfer.getData("guestId");
+    const sourceTableId = e.dataTransfer.getData("sourceTableId");
+    if (!guestId || sourceTableId === tableId) return;
+    await onAssign(guestId, tableId);
+  }
+
+  async function handleDropOnPool(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(null);
+    const guestId = e.dataTransfer.getData("guestId");
+    const sourceTableId = e.dataTransfer.getData("sourceTableId");
+    if (!guestId || sourceTableId === "pool") return;
+    await onUnassign(guestId, sourceTableId);
+  }
+
+  return (
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      {/* ── Floor plan ─────────────────────────────────────────────────────── */}
+      <div className="flex-1">
+        {tables.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 py-20 text-center">
+            <LayoutGrid className="mb-3 h-8 w-8 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">Créez des tables dans la vue liste pour les voir ici.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4 rounded-2xl border border-border bg-muted/10 p-4">
+            {tables.map((table) => {
+              const seated = table.seats.length;
+              const isFull = seated >= table.capacity;
+              const isOver = dragOver === table.id;
+
+              return (
+                <div
+                  key={table.id}
+                  onDragOver={(e) => !isFull && handleDragOver(e, table.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => !isFull && handleDropOnTable(e, table.id)}
+                  className={cn(
+                    "flex w-52 flex-col overflow-hidden rounded-xl border-2 bg-background transition-all",
+                    isOver && !isFull
+                      ? "border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                      : isFull
+                      ? "border-amber-200"
+                      : "border-border",
+                  )}
+                >
+                  {/* Table header */}
+                  <div className={cn("px-3 py-2 text-center", isFull ? "bg-amber-500" : "bg-primary")}>
+                    <p className="text-xs font-bold text-white">{table.name}</p>
+                    <p className="text-[10px] text-white/70">{seated}/{table.capacity} places</p>
+                  </div>
+
+                  {/* Guest chips */}
+                  <div className="flex-1 min-h-[60px] p-2 flex flex-col gap-1">
+                    {table.seats.map((seat) => (
+                      <div
+                        key={seat.guest.id}
+                        draggable={!isPending}
+                        onDragStart={(e) => handleDragStart(e, seat.guest.id, table.id)}
+                        className="flex cursor-grab items-center gap-1.5 rounded-lg bg-muted px-2 py-1 text-xs active:cursor-grabbing active:opacity-60"
+                      >
+                        <UserCheck className="h-3 w-3 shrink-0 text-emerald-600" />
+                        <span className="flex-1 truncate">{genderLabel(seat.guest)}{seat.guest.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => onUnassign(seat.guest.id, table.id)}
+                          disabled={isPending}
+                          className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive"
+                          title="Retirer"
+                        >
+                          <UserMinus className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Drop hint */}
+                    {!isFull && (
+                      <div className={cn(
+                        "flex items-center justify-center rounded-lg border border-dashed py-1.5 text-[10px] text-muted-foreground/50 transition-colors",
+                        isOver ? "border-primary/50 bg-primary/5 text-primary" : "border-transparent",
+                      )}>
+                        {isOver ? "Déposer ici" : ""}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Unassigned pool ─────────────────────────────────────────────────── */}
+      <div
+        onDragOver={(e) => handleDragOver(e, "pool")}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDropOnPool}
+        className={cn(
+          "flex w-full flex-col gap-2 rounded-xl border-2 p-3 transition-colors lg:w-56",
+          dragOver === "pool" ? "border-primary bg-primary/5" : "border-border bg-background",
+        )}
+      >
+        <p className="text-xs font-semibold text-muted-foreground">
+          Non placés ({unseatedGuests.length})
+        </p>
+
+        {unseatedGuests.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg bg-emerald-50 py-4 text-center">
+            <UserCheck className="mb-1 h-5 w-5 text-emerald-500" />
+            <p className="text-xs font-medium text-emerald-700">Tous placés !</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {unseatedGuests.map((guest) => (
+              <div
+                key={guest.id}
+                draggable={!isPending}
+                onDragStart={(e) => handleDragStart(e, guest.id, "pool")}
+                className="flex cursor-grab items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs active:cursor-grabbing active:opacity-60"
+              >
+                <span className="flex-1 truncate">{genderLabel(guest)}{guest.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {dragOver === "pool" && (
+          <p className="text-center text-[10px] text-primary">Déposer pour retirer de la table</p>
+        )}
+
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          Glissez vers une table pour placer · Glissez ici pour retirer
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // SeatingManager
 // ---------------------------------------------------------------------------
 
-export function SeatingManager({ weddingId, ceremonies, initialTables, confirmedGuests }: Props) {
+export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTables, confirmedGuests }: Props) {
   const [selectedCeremonyId, setSelectedCeremonyId] = useState<string>(ceremonies[0]?.id ?? "");
   const [tables, setTables] = useState<SeatingTable[]>(initialTables);
   const [ceremonies_, setCeremonies] = useState<SeatingCeremony[]>(ceremonies);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [newTableName, setNewTableName] = useState("");
   const [newTableCap, setNewTableCap] = useState(8);
@@ -56,26 +241,55 @@ export function SeatingManager({ weddingId, ceremonies, initialTables, confirmed
 
   const [assigningGuestId, setAssigningGuestId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(
-    ceremonies[0]?.seatingShareToken ? `/fr/seating/${ceremonies[0].seatingShareToken}` : null
+    ceremonies[0]?.seatingShareToken ? `/seating/${ceremonies[0].seatingShareToken}` : null
   );
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const ceremony = ceremonies_.find((c) => c.id === selectedCeremonyId);
   const ceremonyTables = tables
     .filter((t) => t.seats !== undefined)
     .sort((a, b) => a.position - b.position);
 
-  // Guests who are in this ceremony's tables
   const seatedGuestIds = new Set(ceremonyTables.flatMap((t) => t.seats.map((s) => s.guest.id)));
   const unseatedGuests = confirmedGuests.filter((g) => !seatedGuestIds.has(g.id));
 
-  function genderLabel(g: SeatingGuest) {
-    if (g.guestType === "SINGLETON" && g.gender) return g.gender === "MR" ? "M. " : "Mme ";
-    return "";
+  // ── Shared mutation helpers ───────────────────────────────────────────────
+
+  async function assignGuestById(guestId: string, tableId: string) {
+    return new Promise<void>((resolve) => {
+      startTransition(async () => {
+        const res = await fetch(`/api/table/${tableId}/assign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guestId }),
+        });
+        if (!res.ok) { resolve(); return; }
+        const guest = confirmedGuests.find((g) => g.id === guestId);
+        if (!guest) { resolve(); return; }
+        setTables((prev) => prev.map((t) => {
+          const filtered = t.seats.filter((s) => s.guest.id !== guestId);
+          if (t.id === tableId) return { ...t, seats: [...filtered, { guest }] };
+          return { ...t, seats: filtered };
+        }));
+        setAssigningGuestId(null);
+        resolve();
+      });
+    });
   }
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  async function unassignGuestById(guestId: string, tableId: string) {
+    return new Promise<void>((resolve) => {
+      startTransition(async () => {
+        await fetch(`/api/table/${tableId}/assign/${guestId}`, { method: "DELETE" });
+        setTables((prev) => prev.map((t) =>
+          t.id === tableId ? { ...t, seats: t.seats.filter((s) => s.guest.id !== guestId) } : t
+        ));
+        resolve();
+      });
+    });
+  }
+
+  // ── List-view handlers ────────────────────────────────────────────────────
 
   async function createTable() {
     if (!newTableName.trim()) return;
@@ -116,33 +330,10 @@ export function SeatingManager({ weddingId, ceremonies, initialTables, confirmed
 
   async function assignGuest(tableId: string) {
     if (!assigningGuestId) return;
-    startTransition(async () => {
-      const res = await fetch(`/api/table/${tableId}/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestId: assigningGuestId }),
-      });
-      if (!res.ok) return;
-      const guest = confirmedGuests.find((g) => g.id === assigningGuestId);
-      if (!guest) return;
-      setTables((prev) => prev.map((t) => {
-        // Remove guest from any previous table
-        const filtered = t.seats.filter((s) => s.guest.id !== assigningGuestId);
-        if (t.id === tableId) return { ...t, seats: [...filtered, { guest }] };
-        return { ...t, seats: filtered };
-      }));
-      setAssigningGuestId(null);
-    });
+    await assignGuestById(assigningGuestId, tableId);
   }
 
-  async function unassignGuest(tableId: string, guestId: string) {
-    startTransition(async () => {
-      await fetch(`/api/table/${tableId}/assign/${guestId}`, { method: "DELETE" });
-      setTables((prev) => prev.map((t) =>
-        t.id === tableId ? { ...t, seats: t.seats.filter((s) => s.guest.id !== guestId) } : t
-      ));
-    });
-  }
+  // ── Share / export ────────────────────────────────────────────────────────
 
   async function generateShareLink() {
     startTransition(async () => {
@@ -170,12 +361,10 @@ export function SeatingManager({ weddingId, ceremonies, initialTables, confirmed
     a.click();
   }
 
-  // ── Ceremony selector ─────────────────────────────────────────────────────
-
   function selectCeremony(id: string) {
     setSelectedCeremonyId(id);
     const c = ceremonies_.find((c) => c.id === id);
-    setShareUrl(c?.seatingShareToken ? `/fr/seating/${c.seatingShareToken}` : null);
+    setShareUrl(c?.seatingShareToken ? `/seating/${c.seatingShareToken}` : null);
     setAssigningGuestId(null);
   }
 
@@ -213,6 +402,32 @@ export function SeatingManager({ weddingId, ceremonies, initialTables, confirmed
           <span>{totalSeated} / {totalCapacity} places</span>
         </div>
 
+        {/* View toggle */}
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-0.5">
+          <button
+            onClick={() => setViewMode("list")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+              viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <List className="h-3.5 w-3.5" /> Liste
+          </button>
+          <button
+            onClick={() => isPaidAccount && setViewMode("visual")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+              !isPaidAccount ? "cursor-not-allowed text-muted-foreground/50" :
+              viewMode === "visual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            )}
+            title={!isPaidAccount ? "Réservé aux comptes Premium" : undefined}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Visuel
+            {!isPaidAccount && <Lock className="h-2.5 w-2.5 text-amber-500" />}
+          </button>
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           {/* Share link */}
           {shareUrl ? (
@@ -242,187 +457,209 @@ export function SeatingManager({ weddingId, ceremonies, initialTables, confirmed
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      {/* ── VISUAL view ─────────────────────────────────────────────────────── */}
+      {viewMode === "visual" && isPaidAccount && (
+        <SeatingCanvas
+          tables={ceremonyTables}
+          unseatedGuests={unseatedGuests}
+          isPending={isPending}
+          onAssign={assignGuestById}
+          onUnassign={unassignGuestById}
+        />
+      )}
 
-        {/* ── Tables panel ─────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4">
-
-          {/* Add table form */}
-          <div className="flex items-end gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-4">
-            <div className="flex-1">
-              <Label className="text-xs">Nom de la table</Label>
-              <Input
-                value={newTableName}
-                onChange={(e) => setNewTableName(e.target.value)}
-                placeholder="Table des mariés"
-                className="mt-1 h-9 text-sm"
-                onKeyDown={(e) => { if (e.key === "Enter") createTable(); }}
-              />
-            </div>
-            <div className="w-24">
-              <Label className="text-xs">Capacité</Label>
-              <Input
-                type="number"
-                min={1}
-                value={newTableCap}
-                onChange={(e) => setNewTableCap(Number(e.target.value))}
-                className="mt-1 h-9 text-sm"
-              />
-            </div>
-            <button
-              onClick={createTable}
-              disabled={isPending || !newTableName.trim()}
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              Ajouter
-            </button>
-          </div>
-
-          {/* Table cards */}
-          {ceremonyTables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
-              <Users className="mb-3 h-8 w-8 text-muted-foreground/40" />
-              <p className="font-medium text-sm">Aucune table créée</p>
-              <p className="mt-1 text-xs text-muted-foreground">Ajoutez une table ci-dessus pour commencer.</p>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {ceremonyTables.map((table) => {
-                const isEditing = editTableId === table.id;
-                const seated = table.seats.length;
-                const isFull = seated >= table.capacity;
-
-                return (
-                  <div key={table.id} className="flex flex-col rounded-xl border border-border bg-background overflow-hidden">
-                    {/* Table header */}
-                    {isEditing ? (
-                      <div className="flex items-center gap-2 bg-primary/10 px-4 py-2">
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="h-7 text-sm flex-1"
-                          onKeyDown={(e) => { if (e.key === "Enter") saveTableEdit(table.id); if (e.key === "Escape") setEditTableId(null); }}
-                          autoFocus
-                        />
-                        <Input
-                          type="number"
-                          value={editCap}
-                          onChange={(e) => setEditCap(Number(e.target.value))}
-                          className="h-7 w-16 text-sm"
-                        />
-                        <button onClick={() => saveTableEdit(table.id)} className="text-xs font-medium text-primary">OK</button>
-                        <button onClick={() => setEditTableId(null)} className="text-xs text-muted-foreground">Annuler</button>
-                      </div>
-                    ) : (
-                      <div
-                        className="flex cursor-pointer items-center gap-2 bg-primary px-4 py-2.5"
-                        onClick={() => { setEditTableId(table.id); setEditName(table.name); setEditCap(table.capacity); }}
-                      >
-                        <span className="flex-1 text-sm font-semibold text-primary-foreground">{table.name}</span>
-                        <span className={cn(
-                          "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                          isFull ? "bg-white/20 text-white" : "bg-white/30 text-white"
-                        )}>
-                          {seated}/{table.capacity}
-                        </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteTable(table.id); }}
-                          disabled={isPending}
-                          className="ml-1 rounded p-0.5 hover:bg-white/20"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-white/70" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Seated guests */}
-                    <ul className="flex-1 divide-y divide-border">
-                      {table.seats.map((seat) => (
-                        <li key={seat.guest.id} className="flex items-center gap-2 px-4 py-2 text-sm">
-                          <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                          <span className="flex-1">{genderLabel(seat.guest)}{seat.guest.name}</span>
-                          <button
-                            onClick={() => unassignGuest(table.id, seat.guest.id)}
-                            disabled={isPending}
-                            className="rounded p-0.5 text-muted-foreground hover:text-destructive"
-                            title="Retirer"
-                          >
-                            <UserMinus className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      ))}
-                      {table.seats.length === 0 && (
-                        <li className="px-4 py-3 text-xs text-muted-foreground italic">Table vide</li>
-                      )}
-                    </ul>
-
-                    {/* Assign button */}
-                    {!isFull && assigningGuestId && (
-                      <button
-                        onClick={() => assignGuest(table.id)}
-                        disabled={isPending}
-                        className="border-t border-border px-4 py-2 text-xs font-medium text-primary hover:bg-primary/5"
-                      >
-                        Placer ici →
-                      </button>
-                    )}
-                    {!isFull && !assigningGuestId && unseatedGuests.length > 0 && (
-                      <div className="border-t border-dashed border-border px-4 py-1.5 text-[11px] text-muted-foreground/50 text-center">
-                        Sélectionnez un invité →
-                      </div>
-                    )}
-                    {isFull && (
-                      <div className="border-t border-border px-4 py-1.5 text-[11px] text-center text-amber-600">
-                        Table complète
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {/* ── Upgrade prompt (visual tab, free tier) ────────────────────────── */}
+      {viewMode === "visual" && !isPaidAccount && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 py-16 text-center">
+          <Lock className="mb-3 h-8 w-8 text-amber-400" />
+          <p className="text-base font-semibold text-amber-900">Vue visuelle réservée aux comptes Premium</p>
+          <p className="mt-1 text-sm text-amber-700">
+            Passez au forfait Premium pour placer vos invités en glisser-déposer sur un plan interactif.
+          </p>
         </div>
+      )}
 
-        {/* ── Unassigned guests panel ──────────────────────────────────── */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Non placés ({unseatedGuests.length})</h3>
-            {assigningGuestId && (
-              <button onClick={() => setAssigningGuestId(null)} className="text-xs text-muted-foreground hover:underline">Annuler</button>
+      {/* ── LIST view ───────────────────────────────────────────────────────── */}
+      {viewMode === "list" && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+
+          {/* Tables panel */}
+          <div className="flex flex-col gap-4">
+
+            {/* Add table form */}
+            <div className="flex items-end gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-4">
+              <div className="flex-1">
+                <Label className="text-xs">Nom de la table</Label>
+                <Input
+                  value={newTableName}
+                  onChange={(e) => setNewTableName(e.target.value)}
+                  placeholder="Table des mariés"
+                  className="mt-1 h-9 text-sm"
+                  onKeyDown={(e) => { if (e.key === "Enter") createTable(); }}
+                />
+              </div>
+              <div className="w-24">
+                <Label className="text-xs">Capacité</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newTableCap}
+                  onChange={(e) => setNewTableCap(Number(e.target.value))}
+                  className="mt-1 h-9 text-sm"
+                />
+              </div>
+              <button
+                onClick={createTable}
+                disabled={isPending || !newTableName.trim()}
+                className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" />
+                Ajouter
+              </button>
+            </div>
+
+            {/* Table cards */}
+            {ceremonyTables.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
+                <Users className="mb-3 h-8 w-8 text-muted-foreground/40" />
+                <p className="font-medium text-sm">Aucune table créée</p>
+                <p className="mt-1 text-xs text-muted-foreground">Ajoutez une table ci-dessus pour commencer.</p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {ceremonyTables.map((table) => {
+                  const isEditing = editTableId === table.id;
+                  const seated = table.seats.length;
+                  const isFull = seated >= table.capacity;
+
+                  return (
+                    <div key={table.id} className="flex flex-col rounded-xl border border-border bg-background overflow-hidden">
+                      {isEditing ? (
+                        <div className="flex items-center gap-2 bg-primary/10 px-4 py-2">
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="h-7 text-sm flex-1"
+                            onKeyDown={(e) => { if (e.key === "Enter") saveTableEdit(table.id); if (e.key === "Escape") setEditTableId(null); }}
+                            autoFocus
+                          />
+                          <Input
+                            type="number"
+                            value={editCap}
+                            onChange={(e) => setEditCap(Number(e.target.value))}
+                            className="h-7 w-16 text-sm"
+                          />
+                          <button onClick={() => saveTableEdit(table.id)} className="text-xs font-medium text-primary">OK</button>
+                          <button onClick={() => setEditTableId(null)} className="text-xs text-muted-foreground">Annuler</button>
+                        </div>
+                      ) : (
+                        <div
+                          className="flex cursor-pointer items-center gap-2 bg-primary px-4 py-2.5"
+                          onClick={() => { setEditTableId(table.id); setEditName(table.name); setEditCap(table.capacity); }}
+                        >
+                          <span className="flex-1 text-sm font-semibold text-primary-foreground">{table.name}</span>
+                          <span className={cn(
+                            "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            isFull ? "bg-white/20 text-white" : "bg-white/30 text-white"
+                          )}>
+                            {seated}/{table.capacity}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteTable(table.id); }}
+                            disabled={isPending}
+                            className="ml-1 rounded p-0.5 hover:bg-white/20"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-white/70" />
+                          </button>
+                        </div>
+                      )}
+
+                      <ul className="flex-1 divide-y divide-border">
+                        {table.seats.map((seat) => (
+                          <li key={seat.guest.id} className="flex items-center gap-2 px-4 py-2 text-sm">
+                            <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                            <span className="flex-1">{genderLabel(seat.guest)}{seat.guest.name}</span>
+                            <button
+                              onClick={() => unassignGuestById(seat.guest.id, table.id)}
+                              disabled={isPending}
+                              className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                              title="Retirer"
+                            >
+                              <UserMinus className="h-3.5 w-3.5" />
+                            </button>
+                          </li>
+                        ))}
+                        {table.seats.length === 0 && (
+                          <li className="px-4 py-3 text-xs text-muted-foreground italic">Table vide</li>
+                        )}
+                      </ul>
+
+                      {!isFull && assigningGuestId && (
+                        <button
+                          onClick={() => assignGuest(table.id)}
+                          disabled={isPending}
+                          className="border-t border-border px-4 py-2 text-xs font-medium text-primary hover:bg-primary/5"
+                        >
+                          Placer ici →
+                        </button>
+                      )}
+                      {!isFull && !assigningGuestId && unseatedGuests.length > 0 && (
+                        <div className="border-t border-dashed border-border px-4 py-1.5 text-[11px] text-muted-foreground/50 text-center">
+                          Sélectionnez un invité →
+                        </div>
+                      )}
+                      {isFull && (
+                        <div className="border-t border-border px-4 py-1.5 text-[11px] text-center text-amber-600">
+                          Table complète
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {unseatedGuests.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50 px-4 py-6 text-center">
-              <UserCheck className="mx-auto mb-2 h-6 w-6 text-emerald-500" />
-              <p className="text-sm font-medium text-emerald-700">Tous placés !</p>
+          {/* Unassigned guests panel */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Non placés ({unseatedGuests.length})</h3>
+              {assigningGuestId && (
+                <button onClick={() => setAssigningGuestId(null)} className="text-xs text-muted-foreground hover:underline">Annuler</button>
+              )}
             </div>
-          ) : (
-            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
-              {unseatedGuests.map((guest) => (
-                <li
-                  key={guest.id}
-                  onClick={() => setAssigningGuestId(assigningGuestId === guest.id ? null : guest.id)}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm transition-colors",
-                    assigningGuestId === guest.id
-                      ? "bg-primary/10 font-medium text-primary"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  <span className="flex-1">{genderLabel(guest)}{guest.name}</span>
-                  {assigningGuestId === guest.id && <span className="text-xs text-primary">→ choisir table</span>}
-                </li>
-              ))}
-            </ul>
-          )}
 
-          <p className="text-[11px] text-muted-foreground">
-            Cliquez sur un invité, puis sur &laquo;&nbsp;Placer ici&nbsp;&raquo; dans la table souhaitée.
-          </p>
+            {unseatedGuests.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50 px-4 py-6 text-center">
+                <UserCheck className="mx-auto mb-2 h-6 w-6 text-emerald-500" />
+                <p className="text-sm font-medium text-emerald-700">Tous placés !</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
+                {unseatedGuests.map((guest) => (
+                  <li
+                    key={guest.id}
+                    onClick={() => setAssigningGuestId(assigningGuestId === guest.id ? null : guest.id)}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm transition-colors",
+                      assigningGuestId === guest.id
+                        ? "bg-primary/10 font-medium text-primary"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <span className="flex-1">{genderLabel(guest)}{guest.name}</span>
+                    {assigningGuestId === guest.id && <span className="text-xs text-primary">→ choisir table</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <p className="text-[11px] text-muted-foreground">
+              Cliquez sur un invité, puis sur &laquo;&nbsp;Placer ici&nbsp;&raquo; dans la table souhaitée.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

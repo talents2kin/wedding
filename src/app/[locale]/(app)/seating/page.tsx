@@ -85,6 +85,7 @@ export default async function SeatingPage() {
       <main className="flex-1 px-8 py-8">
         <SeatingManager
           weddingId={wedding.id}
+          isPaidAccount={false}
           ceremonies={serializedCeremonies}
           initialTables={serializedTables}
           confirmedGuests={confirmedGuests}
