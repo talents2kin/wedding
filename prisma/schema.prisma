@@ -114,8 +114,11 @@ model Wedding {
   plannerAccount PlannerAccount? @relation(fields: [plannerAccountId], references: [id], onDelete: Cascade)
   ceremonies     Ceremony[]
   guests         Guest[]
-  guestGroups    GuestGroup[]
-  invitations    Invitation[]
+  guestGroups            GuestGroup[]
+  invitations            Invitation[]
+  scheduledNotifications ScheduledNotification[]
+  rsvpReminders          RsvpReminder[]
+  tables                 Table[]
 }
 
 enum CeremonyType {
@@ -132,15 +135,19 @@ model Ceremony {
   date        DateTime?   // combined date + time (UTC)
   venue       String?
   position          Int     @default(0) // user-set sort order
-  registrationToken String? @unique    // scopes the public RSVP link
-  weddingId         String
+  registrationToken  String? @unique    // scopes the public RSVP link
+  seatingShareToken  String? @unique    // read-only seating plan share link
+  weddingId          String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   wedding          Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade)
-  guestAssignments GuestCeremony[]
-  invitations      Invitation[]
+  guestAssignments       GuestCeremony[]
+  invitations            Invitation[]
+  scheduledNotifications ScheduledNotification[]
+  rsvpReminders          RsvpReminder[]
+  tables                 Table[]
 }
 
 model GuestCeremony {
@@ -189,8 +196,10 @@ model Guest {
 
   wedding             Wedding            @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   ceremonyAssignments GuestCeremony[]
-  groupMemberships    GuestGroupMember[]
-  invitations         Invitation[]
+  groupMemberships               GuestGroupMember[]
+  invitations                    Invitation[]
+  scheduledNotificationGuests    ScheduledNotificationGuest[]
+  tableSeat                      TableSeat?
 }
 
 model GuestGroup {
@@ -232,6 +241,58 @@ enum NotificationStatus {
   FAILED
 }
 
+enum ScheduledStatus {
+  PENDING
+  FIRED
+  CANCELLED
+}
+
+model ScheduledNotification {
+  id          String          @id @default(cuid())
+  weddingId   String
+  ceremonyId  String
+  templateId  String
+  channel     Channel
+  customBody  String?
+  scheduledAt DateTime
+  status      ScheduledStatus @default(PENDING)
+  firedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
+  guests   ScheduledNotificationGuest[]
+}
+
+model ScheduledNotificationGuest {
+  scheduledNotificationId String
+  guestId                 String
+
+  scheduledNotification ScheduledNotification @relation(fields: [scheduledNotificationId], references: [id], onDelete: Cascade)
+  guest                 Guest                 @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@id([scheduledNotificationId, guestId])
+}
+
+model RsvpReminder {
+  id         String  @id @default(cuid())
+  weddingId  String
+  ceremonyId String
+  templateId String
+  channel    Channel
+  daysAfter  Int     // fire N days after this reminder is created
+  enabled    Boolean @default(true)
+  firedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
+}
+
 model Invitation {
   id         String             @id @default(cuid())
   weddingId  String
@@ -249,4 +310,35 @@ model Invitation {
   wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
   ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Domain — Seating Plan
+// ---------------------------------------------------------------------------
+
+model Table {
+  id         String @id @default(cuid())
+  weddingId  String
+  ceremonyId String
+  name       String
+  capacity   Int
+  position   Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
+  seats    TableSeat[]
+}
+
+/// One row per seated guest. A guest can only be at one table at a time.
+model TableSeat {
+  tableId String
+  guestId String @unique
+
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  guest Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@id([tableId, guestId])
 }

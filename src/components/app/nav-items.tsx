@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarDays, Users, Mail, Settings, HelpCircle } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Users, Mail, Settings, HelpCircle, Armchair } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const coupleNav = [
@@ -10,6 +10,7 @@ const coupleNav = [
   { href: "/ceremonies", label: "Cérémonies", icon: CalendarDays },
   { href: "/guests", label: "Invités", icon: Users },
   { href: "/invitations", label: "Invitations", icon: Mail },
+  { href: "/seating", label: "Plan de table", icon: Armchair },
 ] as const;
 
 const plannerNav = [
