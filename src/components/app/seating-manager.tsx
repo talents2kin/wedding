@@ -59,8 +59,8 @@ type CanvasProps = {
   tables: SeatingTable[];
   unseatedGuests: SeatingGuest[];
   isPending: boolean;
-  onAssign: (guestId: string, tableId: string) => Promise<void>;
-  onUnassign: (guestId: string, tableId: string) => Promise<void>;
+  onAssign: (guestId: string, tableId: string) => void;
+  onUnassign: (guestId: string, tableId: string) => void;
 };
 
 function SeatingCanvas({ tables, unseatedGuests, isPending, onAssign, onUnassign }: CanvasProps) {
@@ -110,7 +110,8 @@ function SeatingCanvas({ tables, unseatedGuests, isPending, onAssign, onUnassign
             <p className="text-sm text-muted-foreground">Créez des tables dans la vue liste pour les voir ici.</p>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-4 rounded-2xl border border-border bg-muted/10 p-4">
+          <div className="overflow-x-auto rounded-2xl">
+          <div className="flex flex-wrap gap-4 border border-border bg-muted/10 p-4" style={{ minWidth: 0 }}>
             {tables.map((table) => {
               const seated = table.seats.length;
               const isFull = seated >= table.capacity;
@@ -174,6 +175,7 @@ function SeatingCanvas({ tables, unseatedGuests, isPending, onAssign, onUnassign
               );
             })}
           </div>
+          </div>
         )}
       </div>
 
@@ -230,7 +232,7 @@ function SeatingCanvas({ tables, unseatedGuests, isPending, onAssign, onUnassign
 export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTables, confirmedGuests }: Props) {
   const [selectedCeremonyId, setSelectedCeremonyId] = useState<string>(ceremonies[0]?.id ?? "");
   const [tables, setTables] = useState<SeatingTable[]>(initialTables);
-  const [ceremonies_, setCeremonies] = useState<SeatingCeremony[]>(ceremonies);
+  const [localCeremonies, setLocalCeremonies] = useState<SeatingCeremony[]>(ceremonies);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [newTableName, setNewTableName] = useState("");
@@ -255,37 +257,31 @@ export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTa
 
   // ── Shared mutation helpers ───────────────────────────────────────────────
 
-  async function assignGuestById(guestId: string, tableId: string) {
-    return new Promise<void>((resolve) => {
-      startTransition(async () => {
-        const res = await fetch(`/api/table/${tableId}/assign`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ guestId }),
-        });
-        if (!res.ok) { resolve(); return; }
-        const guest = confirmedGuests.find((g) => g.id === guestId);
-        if (!guest) { resolve(); return; }
-        setTables((prev) => prev.map((t) => {
-          const filtered = t.seats.filter((s) => s.guest.id !== guestId);
-          if (t.id === tableId) return { ...t, seats: [...filtered, { guest }] };
-          return { ...t, seats: filtered };
-        }));
-        setAssigningGuestId(null);
-        resolve();
+  function assignGuestById(guestId: string, tableId: string): void {
+    startTransition(async () => {
+      const res = await fetch(`/api/table/${tableId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guestId }),
       });
+      if (!res.ok) return;
+      const guest = confirmedGuests.find((g) => g.id === guestId);
+      if (!guest) return;
+      setTables((prev) => prev.map((t) => {
+        const filtered = t.seats.filter((s) => s.guest.id !== guestId);
+        if (t.id === tableId) return { ...t, seats: [...filtered, { guest }] };
+        return { ...t, seats: filtered };
+      }));
+      setAssigningGuestId(null);
     });
   }
 
-  async function unassignGuestById(guestId: string, tableId: string) {
-    return new Promise<void>((resolve) => {
-      startTransition(async () => {
-        await fetch(`/api/table/${tableId}/assign/${guestId}`, { method: "DELETE" });
-        setTables((prev) => prev.map((t) =>
-          t.id === tableId ? { ...t, seats: t.seats.filter((s) => s.guest.id !== guestId) } : t
-        ));
-        resolve();
-      });
+  function unassignGuestById(guestId: string, tableId: string): void {
+    startTransition(async () => {
+      await fetch(`/api/table/${tableId}/assign/${guestId}`, { method: "DELETE" });
+      setTables((prev) => prev.map((t) =>
+        t.id === tableId ? { ...t, seats: t.seats.filter((s) => s.guest.id !== guestId) } : t
+      ));
     });
   }
 
@@ -341,7 +337,7 @@ export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTa
       if (!res.ok) return;
       const { url } = await res.json();
       setShareUrl(url);
-      setCeremonies((prev) => prev.map((c) =>
+      setLocalCeremonies((prev) => prev.map((c) =>
         c.id === selectedCeremonyId ? { ...c, seatingShareToken: url.split("/").pop() ?? null } : c
       ));
     });
@@ -363,7 +359,7 @@ export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTa
 
   function selectCeremony(id: string) {
     setSelectedCeremonyId(id);
-    const c = ceremonies_.find((c) => c.id === id);
+    const c = localCeremonies.find((c) => c.id === id);
     setShareUrl(c?.seatingShareToken ? `/seating/${c.seatingShareToken}` : null);
     setAssigningGuestId(null);
   }
@@ -375,9 +371,9 @@ export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTa
     <div className="flex flex-col gap-6">
 
       {/* Ceremony selector */}
-      {ceremonies_.length > 1 && (
+      {localCeremonies.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {ceremonies_.map((c) => (
+          {localCeremonies.map((c) => (
             <button
               key={c.id}
               onClick={() => selectCeremony(c.id)}
@@ -414,13 +410,11 @@ export function SeatingManager({ weddingId, isPaidAccount, ceremonies, initialTa
             <List className="h-3.5 w-3.5" /> Liste
           </button>
           <button
-            onClick={() => isPaidAccount && setViewMode("visual")}
+            onClick={() => setViewMode("visual")}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors",
-              !isPaidAccount ? "cursor-not-allowed text-muted-foreground/50" :
               viewMode === "visual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
-            title={!isPaidAccount ? "Réservé aux comptes Premium" : undefined}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
             Visuel
