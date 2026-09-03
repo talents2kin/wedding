@@ -50,6 +50,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }));
 
   return NextResponse.json({
+    ceremonyId: ceremony.id,
     ceremonyLabel,
     totalExpected,
     arrivedCount,

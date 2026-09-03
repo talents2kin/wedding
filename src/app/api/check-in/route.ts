@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { qrPayload } from "@/lib/pdf";
 
 // ---------------------------------------------------------------------------
 // POST /api/check-in
@@ -40,16 +39,16 @@ export async function POST(req: NextRequest) {
 
   if (qr) {
     // Expected format: "g:<guestId>|c:<ceremonyId>"
-    const expected = new RegExp(`^g:([^|]+)\\|c:${ceremony.id}$`);
-    const match = qr.match(expected);
+    const qrPattern = /^g:([^|]+)\|c:(.+)$/;
+    const match = qr.match(qrPattern);
     if (!match) {
-      // Try to give a friendlier error for wrong-ceremony QR codes
-      if (qr.startsWith("g:") && !qr.includes(`|c:${ceremony.id}`)) {
-        return NextResponse.json({ error: "wrong_ceremony" }, { status: 422 });
-      }
       return NextResponse.json({ error: "invalid_qr" }, { status: 422 });
     }
-    guestId = match[1];
+    const [, parsedGuestId, parsedCeremonyId] = match;
+    if (parsedCeremonyId !== ceremony.id) {
+      return NextResponse.json({ error: "wrong_ceremony" }, { status: 422 });
+    }
+    guestId = parsedGuestId;
   } else if (directGuestId) {
     guestId = directGuestId;
   } else {
@@ -82,8 +81,6 @@ export async function POST(req: NextRequest) {
   const checkIn = await db.checkIn.create({
     data: { guestId, ceremonyId: ceremony.id },
   });
-
-  void qrPayload; // used only at PDF generation time
 
   return NextResponse.json(
     { checkIn, guest: assignment.guest },

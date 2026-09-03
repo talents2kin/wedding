@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CalendarDays, Users, CheckCircle2, ArrowLeft, ScanLine } from "lucide-react";
+import { CalendarDays, Users, CheckCircle2, ArrowLeft, ScanLine, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { SenderNameEditor } from "@/components/app/sender-name-editor";
 
@@ -40,6 +40,10 @@ export default async function WeddingDashboardPage({
         include: {
           _count: { select: { guestAssignments: true, checkIns: true } },
           guestAssignments: { select: { rsvp: true } },
+          checkIns: {
+            include: { guest: { select: { name: true } } },
+            orderBy: { arrivedAt: "asc" },
+          },
         },
       },
     },
@@ -60,6 +64,10 @@ export default async function WeddingDashboardPage({
     pending: c.guestAssignments.filter((a) => a.rsvp === "PENDING").length,
     arrived: c._count.checkIns,
     checkInToken: c.checkInToken,
+    checkIns: c.checkIns.map((ci) => ({
+      guestName: ci.guest.name,
+      arrivedAt: ci.arrivedAt,
+    })),
   }));
 
   return (
@@ -181,6 +189,47 @@ export default async function WeddingDashboardPage({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Per-ceremony check-in log */}
+        {ceremonyRows.some((r) => r.checkIns.length > 0) && (
+          <div className="mt-8">
+            <h2 className="mb-4 text-sm font-semibold">Journal de check-in</h2>
+            <div className="flex flex-col gap-4">
+              {ceremonyRows.filter((r) => r.checkIns.length > 0).map((row) => (
+                <div key={row.id} className="overflow-hidden rounded-xl border border-border bg-background">
+                  <div className="flex items-center justify-between border-b border-border px-5 py-3">
+                    <p className="text-sm font-medium">{row.label}</p>
+                    <span className="text-xs text-muted-foreground">
+                      {row.checkIns.length} arrivée{row.checkIns.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <tbody className="divide-y divide-border">
+                      {row.checkIns.map((ci, i) => (
+                        <tr key={i}>
+                          <td className="px-5 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                              <span>{ci.guestName}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-2.5 text-right tabular-nums text-xs text-muted-foreground">
+                            {new Intl.DateTimeFormat("fr-FR", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }).format(ci.arrivedAt)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
             </div>
           </div>
         )}
