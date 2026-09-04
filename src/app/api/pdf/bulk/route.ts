@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { findTemplate } from "@/lib/templates";
 import { generateInvitationPdf } from "@/lib/pdf";
+import { getWeddingAccess } from "@/lib/wedding-access";
 
 // ---------------------------------------------------------------------------
 // GET /api/pdf/bulk?ceremonyId=&templateId=
@@ -29,30 +30,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "invalid_template" }, { status: 400 });
   }
 
-  // Fetch ceremony with ownership info + assigned guest IDs
   const ceremony = await db.ceremony.findUnique({
     where: { id: ceremonyId },
-    include: {
-      wedding: {
-        include: {
-          coupleAccount: { select: { userId: true } },
-          plannerAccount: { select: { userId: true } },
-        },
-      },
-      guestAssignments: { select: { guestId: true } },
-    },
+    include: { guestAssignments: { select: { guestId: true } } },
   });
 
   if (!ceremony) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const userId = session.user.id;
-  const owns =
-    ceremony.wedding.coupleAccount?.userId === userId ||
-    ceremony.wedding.plannerAccount?.userId === userId;
-
-  if (!owns) {
+  const access = await getWeddingAccess(session.user.id, ceremony.weddingId);
+  if (!access) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -78,7 +66,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const senderName = ceremony.wedding.senderName ?? ceremony.wedding.name;
+  const senderName = access.wedding.senderName ?? access.wedding.name;
   const zip = new JSZip();
 
   await Promise.all(
@@ -102,7 +90,7 @@ export async function GET(req: NextRequest) {
   );
 
   const zipBuffer = await zip.generateAsync({ type: "uint8array" });
-  const weddingName = (ceremony.wedding as { name: string }).name.replace(/[^a-zA-Z0-9]/g, "_");
+  const weddingName = access.wedding.name.replace(/[^a-zA-Z0-9]/g, "_");
 
   return new NextResponse(Buffer.from(zipBuffer), {
     status: 200,

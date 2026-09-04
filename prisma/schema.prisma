@@ -24,6 +24,7 @@ model User {
   sessions       Session[]
   coupleAccount  CoupleAccount?
   plannerAccount PlannerAccount?
+  collaborations WeddingCollaborator[]
 }
 
 model Account {
@@ -119,6 +120,8 @@ model Wedding {
   scheduledNotifications ScheduledNotification[]
   rsvpReminders          RsvpReminder[]
   tables                 Table[]
+  collaborators          WeddingCollaborator[]
+  invites                CollaboratorInvite[]
 }
 
 enum CeremonyType {
@@ -333,6 +336,47 @@ model Table {
   wedding  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
   ceremony Ceremony @relation(fields: [ceremonyId], references: [id], onDelete: Cascade)
   seats    TableSeat[]
+}
+
+// ---------------------------------------------------------------------------
+// Domain — Collaborators
+// ---------------------------------------------------------------------------
+
+enum CollaboratorRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+/// Accepted collaborator: another user with a scoped role on this wedding.
+model WeddingCollaborator {
+  id        String           @id @default(cuid())
+  weddingId String
+  userId    String
+  role      CollaboratorRole
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wedding Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingId, userId])
+}
+
+/// Pending invite: email + role + one-time token. Expires after 7 days.
+model CollaboratorInvite {
+  id         String           @id @default(cuid())
+  weddingId  String
+  email      String
+  role       CollaboratorRole
+  token      String           @unique @default(cuid())
+  acceptedAt DateTime?
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+
+  wedding Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade)
 }
 
 // ---------------------------------------------------------------------------

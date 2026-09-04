@@ -5,6 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
+    wedding: { findUnique: vi.fn() },
     ceremony: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
   },
 }));
@@ -19,6 +20,17 @@ import { PATCH, DELETE } from "../route";
 
 const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 
+const WEDDING = {
+  id: "w1",
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
+  plannerAccount: null,
+  collaborators: [],
+};
+
 const CEREMONY_WITH_WEDDING = {
   id: "c1",
   type: "CIVIL",
@@ -27,24 +39,12 @@ const CEREMONY_WITH_WEDDING = {
   venue: "Mairie de Paris",
   position: 0,
   weddingId: "w1",
-  wedding: {
-    coupleAccount: { userId: "u1" },
-    plannerAccount: null,
-  },
   _count: { guestAssignments: 0 },
 };
 
 const CEREMONY_WITH_GUESTS = {
   ...CEREMONY_WITH_WEDDING,
   _count: { guestAssignments: 3 },
-};
-
-const CEREMONY_WRONG_OWNER = {
-  ...CEREMONY_WITH_WEDDING,
-  wedding: {
-    coupleAccount: { userId: "other_user" },
-    plannerAccount: null,
-  },
 };
 
 function makePATCH(id: string, body: unknown) {
@@ -67,7 +67,10 @@ function makeDELETE(id: string, force = false) {
 // ---------------------------------------------------------------------------
 
 describe("PATCH /api/ceremony/[id]", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
+  });
 
   it("returns 401 when unauthenticated", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
@@ -84,7 +87,8 @@ describe("PATCH /api/ceremony/[id]", () => {
 
   it("returns 403 when user does not own the wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY_WRONG_OWNER as never);
+    vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY_WITH_WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await PATCH(makePATCH("c1", { venue: "New" }), { params: Promise.resolve({ id: "c1" }) });
     expect(res.status).toBe(403);
   });
@@ -106,7 +110,10 @@ describe("PATCH /api/ceremony/[id]", () => {
 // ---------------------------------------------------------------------------
 
 describe("DELETE /api/ceremony/[id]", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
+  });
 
   it("returns 401 when unauthenticated", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
@@ -123,7 +130,8 @@ describe("DELETE /api/ceremony/[id]", () => {
 
   it("returns 403 when user does not own the wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY_WRONG_OWNER as never);
+    vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY_WITH_WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await DELETE(makeDELETE("c1"), { params: Promise.resolve({ id: "c1" }) });
     expect(res.status).toBe(403);
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 type Params = { params: Promise<{ id: string; guestId: string }> };
 
@@ -16,28 +17,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const seat = await db.tableSeat.findFirst({
     where: { tableId, guestId },
-    include: {
-      table: {
-        include: {
-          wedding: {
-            include: {
-              coupleAccount: { select: { userId: true } },
-              plannerAccount: { select: { userId: true } },
-            },
-          },
-        },
-      },
-    },
+    include: { table: { select: { weddingId: true } } },
   });
 
   if (!seat) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const userId = session.user.id;
-  const owns =
-    seat.table.wedding.coupleAccount?.userId === userId ||
-    seat.table.wedding.plannerAccount?.userId === userId;
-
-  if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const access = await getWeddingAccess(session.user.id, seat.table.weddingId);
+  if (!access || !canEdit(access.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   await db.tableSeat.delete({ where: { guestId } });
   return new NextResponse(null, { status: 204 });

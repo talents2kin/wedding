@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess } from "@/lib/wedding-access";
 import { SeatingManager, type SeatingCeremony, type SeatingGuest, type SeatingTable } from "@/components/app/seating-manager";
 
 export default async function PlannerSeatingPage({
@@ -13,11 +14,8 @@ export default async function PlannerSeatingPage({
 
   const { id: weddingId } = await params;
 
-  const wedding = await db.wedding.findFirst({
-    where: { id: weddingId, plannerAccount: { userId: session.user.id } },
-  });
-
-  if (!wedding) notFound();
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access) notFound();
 
   const [ceremonies, tables, confirmedAssignments] = await Promise.all([
     db.ceremony.findMany({
@@ -79,7 +77,7 @@ export default async function PlannerSeatingPage({
       <header className="border-b border-border px-8 py-6">
         <h1 className="text-2xl font-bold leading-tight">Plan de table</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {wedding.name} · Placez vos invités confirmés
+          {access.wedding.name} · Placez vos invités confirmés
         </p>
       </header>
       <main className="flex-1 px-8 py-8">

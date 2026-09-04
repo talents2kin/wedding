@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 const schema = z.object({
   guestId: z.string().min(1),
@@ -38,16 +39,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id: guestCeremony.guest.weddingId,
-      OR: [
-        { coupleAccount: { userId: session.user.id } },
-        { plannerAccount: { userId: session.user.id } },
-      ],
-    },
-  });
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, guestCeremony.guest.weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

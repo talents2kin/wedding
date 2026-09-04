@@ -5,24 +5,7 @@ import { db } from "@/lib/db";
 
 type Params = { params: Promise<{ id: string }> };
 
-async function getTableWithAuth(id: string, userId: string) {
-  const table = await db.table.findUnique({
-    where: { id },
-    include: {
-      wedding: {
-        include: {
-          coupleAccount: { select: { userId: true } },
-          plannerAccount: { select: { userId: true } },
-        },
-      },
-    },
-  });
-  if (!table) return null;
-  const owns =
-    table.wedding.coupleAccount?.userId === userId ||
-    table.wedding.plannerAccount?.userId === userId;
-  return owns ? table : null;
-}
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 // ---------------------------------------------------------------------------
 // POST /api/table/[id]/assign — seat a guest at this table
@@ -35,8 +18,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id: tableId } = await params;
-  const table = await getTableWithAuth(tableId, session.user.id);
+  const table = await db.table.findUnique({ where: { id: tableId } });
   if (!table) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const access = await getWeddingAccess(session.user.id, table.weddingId);
+  if (!access || !canEdit(access.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   const parsed = AssignSchema.safeParse(body);

@@ -5,21 +5,7 @@ import { db } from "@/lib/db";
 import { findTemplate, renderBody } from "@/lib/templates";
 import { deliver } from "@/lib/delivery";
 
-// ---------------------------------------------------------------------------
-// Ownership helper
-// ---------------------------------------------------------------------------
-
-async function getOwnedWedding(userId: string, weddingId: string) {
-  return db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      OR: [
-        { coupleAccount: { userId } },
-        { plannerAccount: { userId } },
-      ],
-    },
-  });
-}
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 // ---------------------------------------------------------------------------
 // GET /api/invitation?weddingId=
@@ -37,8 +23,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "missing_weddingId" }, { status: 400 });
   }
 
-  const wedding = await getOwnedWedding(session.user.id, weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -88,9 +74,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_template" }, { status: 400 });
   }
 
-  // Verify ownership
-  const wedding = await getOwnedWedding(session.user.id, weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -100,7 +85,7 @@ export async function POST(req: NextRequest) {
     db.ceremony.findUnique({ where: { id: ceremonyId } }),
   ]);
 
-  const senderName = (wedding as { senderName?: string | null }).senderName ?? wedding.name;
+  const senderName = access.wedding.senderName ?? access.wedding.name;
   const ceremonyLabel = ceremony
     ? ceremony.type === "CUSTOM"
       ? ceremony.customLabel ?? "Cérémonie"

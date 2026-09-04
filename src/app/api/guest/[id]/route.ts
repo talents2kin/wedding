@@ -2,19 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-
-async function getOwnedWedding(userId: string, weddingId: string) {
-  return db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      OR: [
-        { coupleAccount: { userId } },
-        { plannerAccount: { userId } },
-      ],
-    },
-    include: { coupleAccount: { select: { guestCap: true } } },
-  });
-}
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 const patchSchema = z.object({
   name: z.string().min(1).optional(),
@@ -49,8 +37,8 @@ export async function PATCH(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const wedding = await getOwnedWedding(session.user.id, guest.weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, guest.weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -103,8 +91,8 @@ export async function DELETE(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const wedding = await getOwnedWedding(session.user.id, guest.weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, guest.weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

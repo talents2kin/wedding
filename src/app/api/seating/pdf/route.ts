@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { getWeddingAccess } from "@/lib/wedding-access";
 
 // ---------------------------------------------------------------------------
 // GET /api/seating/pdf?ceremonyId=
@@ -17,12 +18,6 @@ export async function GET(req: NextRequest) {
   const ceremony = await db.ceremony.findUnique({
     where: { id: ceremonyId },
     include: {
-      wedding: {
-        include: {
-          coupleAccount: { select: { userId: true } },
-          plannerAccount: { select: { userId: true } },
-        },
-      },
       tables: {
         orderBy: { position: "asc" },
         include: {
@@ -36,14 +31,10 @@ export async function GET(req: NextRequest) {
 
   if (!ceremony) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const userId = session.user.id;
-  const owns =
-    ceremony.wedding.coupleAccount?.userId === userId ||
-    ceremony.wedding.plannerAccount?.userId === userId;
+  const access = await getWeddingAccess(session.user.id, ceremony.weddingId);
+  if (!access) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  if (!owns) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-
-  const bytes = await generateSeatingPdf(ceremony);
+  const bytes = await generateSeatingPdf(ceremony, access.wedding.name);
 
   return new NextResponse(Buffer.from(bytes), {
     headers: {
@@ -70,10 +61,9 @@ type CeremonyForPdf = {
   date: Date | null;
   venue: string | null;
   tables: TableWithSeats[];
-  wedding: { name: string };
 };
 
-async function generateSeatingPdf(ceremony: CeremonyForPdf): Promise<Uint8Array> {
+async function generateSeatingPdf(ceremony: CeremonyForPdf, weddingName: string): Promise<Uint8Array> {
   const BURGUNDY = rgb(0.50, 0.07, 0.12);
   const CREAM    = rgb(0.98, 0.96, 0.92);
   const DARK     = rgb(0.12, 0.10, 0.11);
@@ -98,7 +88,7 @@ async function generateSeatingPdf(ceremony: CeremonyForPdf): Promise<Uint8Array>
   function newPage() {
     const page = doc.addPage([W, H]);
     page.drawRectangle({ x: 0, y: H - 60, width: W, height: 60, color: BURGUNDY });
-    page.drawText(`Plan de table — ${ceremony.wedding.name}`, {
+    page.drawText(`Plan de table — ${weddingName}`, {
       x: MARGIN, y: H - 38, size: 14, font: bold, color: CREAM,
     });
     if (dateStr) {

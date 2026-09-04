@@ -2,25 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-
-// ---------------------------------------------------------------------------
-// Auth helper — returns the owned wedding or null
-// ---------------------------------------------------------------------------
-
-async function getOwnedWedding(userId: string, weddingId: string) {
-  return db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      OR: [
-        { coupleAccount: { userId } },
-        { plannerAccount: { userId } },
-      ],
-    },
-    include: {
-      coupleAccount: { select: { guestCap: true } },
-    },
-  });
-}
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 const RsvpEnum = z.enum(["PENDING", "CONFIRMED", "DECLINED"]);
 
@@ -54,8 +36,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "missing_weddingId" }, { status: 400 });
   }
 
-  const wedding = await getOwnedWedding(session.user.id, weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -112,15 +94,15 @@ export async function POST(req: NextRequest) {
 
   const { weddingId, ceremonyIds, ...guestData } = result.data;
 
-  const wedding = await getOwnedWedding(session.user.id, weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   // Enforce guest cap only for couple-owned weddings
-  if (wedding.coupleAccount) {
+  if (access.wedding.coupleAccount) {
     const count = await db.guest.count({ where: { weddingId } });
-    if (count >= wedding.coupleAccount.guestCap) {
+    if (count >= access.wedding.coupleAccount.guestCap) {
       return NextResponse.json({ error: "cap_exceeded" }, { status: 402 });
     }
   }

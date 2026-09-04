@@ -1,9 +1,11 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canManageCollaborators } from "@/lib/wedding-access";
 import { CalendarDays, Users, CheckCircle2, ArrowLeft, ScanLine, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { SenderNameEditor } from "@/components/app/sender-name-editor";
+import { CollaboratorManager } from "@/components/app/collaborator-manager";
 
 function fmt(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -28,11 +30,14 @@ export default async function WeddingDashboardPage({
 
   const { id: weddingId } = await params;
 
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      plannerAccount: { userId: session.user.id },
-    },
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access) notFound();
+
+  const userRole = access.role;
+  const canInviteCollaborators = canManageCollaborators(userRole);
+
+  const wedding = await db.wedding.findUnique({
+    where: { id: weddingId },
     include: {
       _count: { select: { guests: true } },
       ceremonies: {
@@ -233,6 +238,12 @@ export default async function WeddingDashboardPage({
             </div>
           </div>
         )}
+
+        <CollaboratorManager
+          weddingId={weddingId}
+          currentUserId={session.user.id!}
+          canManage={canInviteCollaborators}
+        />
       </main>
     </div>
   );

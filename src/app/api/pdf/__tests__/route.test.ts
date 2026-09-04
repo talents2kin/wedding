@@ -8,6 +8,7 @@ vi.mock("@/lib/pdf", () => ({
 }));
 vi.mock("@/lib/db", () => ({
   db: {
+    wedding: { findUnique: vi.fn() },
     guest: { findUnique: vi.fn() },
     ceremony: { findUnique: vi.fn() },
     invitation: { findFirst: vi.fn() },
@@ -24,16 +25,23 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 const GUEST = {
   id: "g1", name: "Alice", guestType: "SINGLETON", gender: "MME",
   email: "alice@test.com", phone: null,
-  wedding: {
-    id: "w1", name: "Mariage Test", senderName: "Marie & Pierre",
-    coupleAccount: { userId: "u1" }, plannerAccount: null,
-  },
+  weddingId: "w1",
 };
 
 const CEREMONY = {
   id: "c1", type: "CIVIL", customLabel: null,
   date: new Date("2026-09-10"), venue: "Mairie",
-  wedding: { coupleAccount: { userId: "u1" }, plannerAccount: null },
+};
+
+const WEDDING = {
+  id: "w1",
+  name: "Mariage Test",
+  senderName: "Marie & Pierre",
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
+  plannerAccount: null,
+  collaborators: [],
 };
 
 function makeGET(params: Record<string, string>) {
@@ -45,6 +53,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(auth).mockResolvedValue(SESSION as never);
   vi.mocked(db.guest.findUnique).mockResolvedValue(GUEST as never);
+  vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
   vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY as never);
   vi.mocked(db.invitation.findFirst).mockResolvedValue(null as never);
   vi.mocked(generateInvitationPdf).mockResolvedValue(new Uint8Array([37, 80, 68, 70]) as never);
@@ -74,10 +83,7 @@ describe("GET /api/pdf", () => {
   });
 
   it("returns 403 when user does not own the wedding", async () => {
-    vi.mocked(db.guest.findUnique).mockResolvedValue({
-      ...GUEST,
-      wedding: { ...GUEST.wedding, coupleAccount: { userId: "other" }, plannerAccount: null },
-    } as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await GET(makeGET({ guestId: "g1", ceremonyId: "c1", templateId: "classique" }));
     expect(res.status).toBe(403);
   });

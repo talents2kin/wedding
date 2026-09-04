@@ -2,30 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Fetch ceremony with ownership info and guest-assignment count. */
-async function getCeremonyForUser(ceremonyId: string, userId: string) {
-  const ceremony = await db.ceremony.findUnique({
+/** Fetch ceremony with guest-assignment count; check wedding access separately. */
+async function getCeremony(ceremonyId: string) {
+  return db.ceremony.findUnique({
     where: { id: ceremonyId },
-    include: {
-      wedding: {
-        include: {
-          coupleAccount: { select: { userId: true } },
-          plannerAccount: { select: { userId: true } },
-        },
-      },
-      _count: { select: { guestAssignments: true } },
-    },
+    include: { _count: { select: { guestAssignments: true } } },
   });
-  if (!ceremony) return null;
-
-  const owns =
-    ceremony.wedding.coupleAccount?.userId === userId ||
-    ceremony.wedding.plannerAccount?.userId === userId;
-
-  return owns ? ceremony : ("forbidden" as const);
 }
 
 const updateSchema = z
@@ -59,10 +45,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const ceremony = await getCeremonyForUser(id, session.user.id);
-
+  const ceremony = await getCeremony(id);
   if (!ceremony) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  if (ceremony === "forbidden") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const access = await getWeddingAccess(session.user.id, ceremony.weddingId);
+  if (!access || !canEdit(access.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
@@ -102,10 +89,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const ceremony = await getCeremonyForUser(id, session.user.id);
-
+  const ceremony = await getCeremony(id);
   if (!ceremony) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  if (ceremony === "forbidden") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const access = await getWeddingAccess(session.user.id, ceremony.weddingId);
+  if (!access || !canEdit(access.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const force = req.nextUrl.searchParams.get("force") === "true";
   const assignedCount = ceremony._count.guestAssignments;

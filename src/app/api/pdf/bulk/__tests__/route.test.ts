@@ -14,6 +14,7 @@ vi.mock("jszip", () => {
 });
 vi.mock("@/lib/db", () => ({
   db: {
+    wedding: { findUnique: vi.fn() },
     ceremony: { findUnique: vi.fn() },
     guest: { findMany: vi.fn() },
     invitation: { findMany: vi.fn() },
@@ -29,11 +30,19 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 const CEREMONY = {
   id: "c1", type: "CIVIL", customLabel: null,
   date: new Date("2026-09-10"), venue: "Mairie",
-  wedding: {
-    id: "w1", name: "Mariage Test", senderName: "Marie & Pierre",
-    coupleAccount: { userId: "u1" }, plannerAccount: null,
-  },
+  weddingId: "w1",
   guestAssignments: [{ guestId: "g1" }],
+};
+
+const WEDDING = {
+  id: "w1",
+  name: "Mariage Test",
+  senderName: "Marie & Pierre",
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
+  plannerAccount: null,
+  collaborators: [],
 };
 
 const GUEST = {
@@ -49,6 +58,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(auth).mockResolvedValue(SESSION as never);
   vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY as never);
+  vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
   vi.mocked(db.guest.findMany).mockResolvedValue([GUEST] as never);
   vi.mocked(db.invitation.findMany).mockResolvedValue([]);
 });
@@ -70,17 +80,14 @@ describe("GET /api/pdf/bulk", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 403 when ceremony not found or not owned", async () => {
+  it("returns 404 when ceremony not found", async () => {
     vi.mocked(db.ceremony.findUnique).mockResolvedValue(null as never);
     const res = await GET(makeGET({ ceremonyId: "c1", templateId: "classique" }));
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("returns 403 when user does not own the wedding", async () => {
-    vi.mocked(db.ceremony.findUnique).mockResolvedValue({
-      ...CEREMONY,
-      wedding: { ...CEREMONY.wedding, coupleAccount: { userId: "other" }, plannerAccount: null },
-    } as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await GET(makeGET({ ceremonyId: "c1", templateId: "classique" }));
     expect(res.status).toBe(403);
   });

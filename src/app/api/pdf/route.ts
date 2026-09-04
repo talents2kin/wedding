@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { findTemplate } from "@/lib/templates";
 import { generateInvitationPdf } from "@/lib/pdf";
+import { getWeddingAccess } from "@/lib/wedding-access";
 
 // ---------------------------------------------------------------------------
 // GET /api/pdf?guestId=&ceremonyId=&templateId=
@@ -29,43 +30,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "invalid_template" }, { status: 400 });
   }
 
-  // Fetch guest with wedding ownership info
-  const guest = await db.guest.findUnique({
-    where: { id: guestId },
-    include: {
-      wedding: {
-        include: {
-          coupleAccount: { select: { userId: true } },
-          plannerAccount: { select: { userId: true } },
-        },
-      },
-    },
-  });
+  // Fetch guest
+  const guest = await db.guest.findUnique({ where: { id: guestId } });
 
   if (!guest) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const userId = session.user.id;
-  const owns =
-    guest.wedding.coupleAccount?.userId === userId ||
-    guest.wedding.plannerAccount?.userId === userId;
-
-  if (!owns) {
+  const access = await getWeddingAccess(session.user.id, guest.weddingId);
+  if (!access) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // Fetch ceremony
-  const ceremony = await db.ceremony.findUnique({ where: { id: ceremonyId } });
+  // Fetch ceremony + optional custom body in parallel
+  const [ceremony, invitation] = await Promise.all([
+    db.ceremony.findUnique({ where: { id: ceremonyId } }),
+    db.invitation.findFirst({
+      where: { guestId, ceremonyId, templateId },
+      orderBy: { createdAt: "desc" },
+      select: { customBody: true },
+    }),
+  ]);
 
-  // Check if there's a custom body from a sent invitation
-  const invitation = await db.invitation.findFirst({
-    where: { guestId, ceremonyId, templateId },
-    orderBy: { createdAt: "desc" },
-    select: { customBody: true },
-  });
-
-  const senderName = guest.wedding.senderName ?? guest.wedding.name;
+  const senderName = access.wedding.senderName ?? access.wedding.name;
 
   const pdfBytes = await generateInvitationPdf(
     { id: guest.id, name: guest.name, guestType: guest.guestType, gender: guest.gender },

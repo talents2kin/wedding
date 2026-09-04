@@ -2,27 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 type Params = { params: Promise<{ id: string }> };
-
-async function getTable(id: string, userId: string) {
-  const table = await db.table.findUnique({
-    where: { id },
-    include: {
-      wedding: {
-        include: {
-          coupleAccount: { select: { userId: true } },
-          plannerAccount: { select: { userId: true } },
-        },
-      },
-    },
-  });
-  if (!table) return null;
-  const owns =
-    table.wedding.coupleAccount?.userId === userId ||
-    table.wedding.plannerAccount?.userId === userId;
-  return owns ? table : null;
-}
 
 // ---------------------------------------------------------------------------
 // PATCH /api/table/[id] — rename or resize
@@ -38,8 +20,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const table = await getTable(id, session.user.id);
+  const table = await db.table.findUnique({ where: { id } });
   if (!table) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const access = await getWeddingAccess(session.user.id, table.weddingId);
+  if (!access || !canEdit(access.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);
@@ -63,8 +48,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const table = await getTable(id, session.user.id);
+  const table = await db.table.findUnique({ where: { id } });
   if (!table) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const access2 = await getWeddingAccess(session.user.id, table.weddingId);
+  if (!access2 || !canEdit(access2.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   await db.table.delete({ where: { id } });
   return new NextResponse(null, { status: 204 });

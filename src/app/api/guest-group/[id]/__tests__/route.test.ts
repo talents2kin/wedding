@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
     guestGroup: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     guestGroupMember: { upsert: vi.fn(), delete: vi.fn() },
   },
@@ -23,8 +23,13 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 
 const WEDDING = {
   id: "w1",
-  coupleAccount: { guestCap: 50 },
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
   plannerAccount: null,
+  collaborators: [],
 };
 
 const GROUP = {
@@ -68,7 +73,7 @@ describe("PATCH /api/guest-group/[id]", () => {
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guestGroup.findUnique).mockResolvedValue(GROUP as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await PATCH(makeReq("PATCH", { name: "Amis" }), { params: PARAMS });
     expect(res.status).toBe(403);
   });
@@ -76,7 +81,7 @@ describe("PATCH /api/guest-group/[id]", () => {
   it("renames group and returns 200", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guestGroup.findUnique).mockResolvedValue(GROUP as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestGroup.update).mockResolvedValue({ ...GROUP, name: "Amis" } as never);
 
     const res = await PATCH(makeReq("PATCH", { name: "Amis" }), { params: PARAMS });
@@ -88,7 +93,7 @@ describe("PATCH /api/guest-group/[id]", () => {
   it("adds a member when addGuestId is provided", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guestGroup.findUnique).mockResolvedValue(GROUP as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestGroupMember.upsert).mockResolvedValue({} as never);
 
     const res = await PATCH(makeReq("PATCH", { addGuestId: "g1" }), { params: PARAMS });
@@ -99,7 +104,7 @@ describe("PATCH /api/guest-group/[id]", () => {
   it("removes a member when removeGuestId is provided", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guestGroup.findUnique).mockResolvedValue(GROUP as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestGroupMember.delete).mockResolvedValue({} as never);
 
     const res = await PATCH(makeReq("PATCH", { removeGuestId: "g1" }), { params: PARAMS });
@@ -131,7 +136,7 @@ describe("DELETE /api/guest-group/[id]", () => {
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guestGroup.findUnique).mockResolvedValue(GROUP as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await DELETE(makeReq("DELETE"), { params: PARAMS });
     expect(res.status).toBe(403);
   });
@@ -139,7 +144,7 @@ describe("DELETE /api/guest-group/[id]", () => {
   it("returns 204 on successful delete", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guestGroup.findUnique).mockResolvedValue(GROUP as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestGroup.delete).mockResolvedValue(GROUP as never);
 
     const res = await DELETE(makeReq("DELETE"), { params: PARAMS });

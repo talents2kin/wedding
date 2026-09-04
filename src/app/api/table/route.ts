@@ -3,14 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-async function getWeddingForUser(weddingId: string, userId: string) {
-  return db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      OR: [{ coupleAccount: { userId } }, { plannerAccount: { userId } }],
-    },
-  });
-}
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 // ---------------------------------------------------------------------------
 // POST /api/table — create a table
@@ -32,8 +25,8 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
 
   const data = parsed.data;
-  const wedding = await getWeddingForUser(data.weddingId, session.user.id);
-  if (!wedding) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const access = await getWeddingAccess(session.user.id, data.weddingId);
+  if (!access || !canEdit(access.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const count = await db.table.count({ where: { ceremonyId: data.ceremonyId } });
 

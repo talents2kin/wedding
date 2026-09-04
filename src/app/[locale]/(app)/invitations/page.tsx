@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { TEMPLATES } from "@/lib/templates";
-import { InvitationManager, type Ceremony, type Guest, type Invitation } from "@/components/app/invitation-manager";
+import { InvitationManager, type Ceremony, type Guest, type Invitation, type ScheduledItem, type RsvpReminderItem } from "@/components/app/invitation-manager";
 
 export default async function InvitationsPage() {
   const session = await auth();
@@ -17,7 +17,7 @@ export default async function InvitationsPage() {
 
   const { wedding } = coupleAccount;
 
-  const [guests, ceremonies, invitations] = await Promise.all([
+  const [guests, ceremonies, invitations, scheduledItems, reminderItems] = await Promise.all([
     db.guest.findMany({
       where: { weddingId: wedding.id },
       select: { id: true, name: true, guestType: true, gender: true, email: true, phone: true },
@@ -29,6 +29,16 @@ export default async function InvitationsPage() {
     }),
     db.invitation.findMany({
       where: { weddingId: wedding.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.scheduledNotification.findMany({
+      where: { weddingId: wedding.id, status: "PENDING" },
+      include: { ceremony: { select: { type: true, customLabel: true, date: true } }, guests: { select: { guestId: true } } },
+      orderBy: { scheduledAt: "asc" },
+    }),
+    db.rsvpReminder.findMany({
+      where: { weddingId: wedding.id },
+      include: { ceremony: { select: { type: true, customLabel: true } } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -61,6 +71,32 @@ export default async function InvitationsPage() {
     customBody: i.customBody,
   }));
 
+  const serializedScheduled: ScheduledItem[] = scheduledItems.map((s) => ({
+    id: s.id,
+    weddingId: s.weddingId,
+    ceremonyId: s.ceremonyId,
+    templateId: s.templateId,
+    channel: s.channel as ScheduledItem["channel"],
+    scheduledAt: s.scheduledAt.toISOString(),
+    status: s.status as ScheduledItem["status"],
+    customBody: s.customBody,
+    ceremony: { type: s.ceremony.type, customLabel: s.ceremony.customLabel, date: s.ceremony.date?.toISOString() ?? null },
+    guests: s.guests.map((g) => ({ guestId: g.guestId })),
+  }));
+
+  const serializedReminders: RsvpReminderItem[] = reminderItems.map((r) => ({
+    id: r.id,
+    weddingId: r.weddingId,
+    ceremonyId: r.ceremonyId,
+    templateId: r.templateId,
+    channel: r.channel as RsvpReminderItem["channel"],
+    daysAfter: r.daysAfter,
+    enabled: r.enabled,
+    firedAt: r.firedAt?.toISOString() ?? null,
+    createdAt: r.createdAt.toISOString(),
+    ceremony: { type: r.ceremony.type, customLabel: r.ceremony.customLabel },
+  }));
+
   // Free-tier couple: no customisation
   const isPaidAccount = false;
 
@@ -82,6 +118,8 @@ export default async function InvitationsPage() {
           ceremonies={serializedCeremonies}
           initialGuests={serializedGuests}
           initialInvitations={serializedInvitations}
+          initialScheduled={serializedScheduled}
+          initialReminders={serializedReminders}
         />
       </main>
     </div>

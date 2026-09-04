@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess } from "@/lib/wedding-access";
 import { GuestManager, type Ceremony, type Guest, type GuestGroup, type GuestInvitationStatus } from "@/components/app/guest-manager";
 import { ImportSection } from "@/components/app/import-section";
 
@@ -14,13 +15,10 @@ export default async function PlannerGuestsPage({
 
   const { id: weddingId } = await params;
 
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      plannerAccount: { userId: session.user.id },
-    },
-  });
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access) notFound();
 
+  const wedding = await db.wedding.findUnique({ where: { id: weddingId } });
   if (!wedding) notFound();
 
   const [guests, groups, ceremonies, latestInvitations] = await Promise.all([

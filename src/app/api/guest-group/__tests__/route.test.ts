@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
     guestGroup: { findMany: vi.fn(), create: vi.fn() },
   },
 }));
@@ -22,8 +22,13 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 
 const WEDDING = {
   id: "w1",
-  coupleAccount: { guestCap: 50 },
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
   plannerAccount: null,
+  collaborators: [],
 };
 
 const GROUP = {
@@ -69,14 +74,14 @@ describe("GET /api/guest-group", () => {
 
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await GET(makeGET({ weddingId: "w1" }));
     expect(res.status).toBe(403);
   });
 
   it("returns 200 with groups list", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestGroup.findMany).mockResolvedValue([GROUP] as never);
 
     const res = await GET(makeGET({ weddingId: "w1" }));
@@ -102,21 +107,21 @@ describe("POST /api/guest-group", () => {
 
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await POST(makePOST({ weddingId: "w1", name: "Amis" }));
     expect(res.status).toBe(403);
   });
 
   it("returns 400 when name is missing", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     const res = await POST(makePOST({ weddingId: "w1" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 201 on success", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestGroup.create).mockResolvedValue(GROUP as never);
 
     const res = await POST(makePOST({ weddingId: "w1", name: "Famille Dupont" }));

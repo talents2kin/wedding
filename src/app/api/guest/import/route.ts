@@ -3,18 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-async function getOwnedWedding(userId: string, weddingId: string) {
-  return db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      OR: [
-        { coupleAccount: { userId } },
-        { plannerAccount: { userId } },
-      ],
-    },
-    include: { coupleAccount: { select: { guestCap: true } } },
-  });
-}
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 const rowSchema = z.object({
   name: z.string(),
@@ -51,8 +40,8 @@ export async function POST(req: NextRequest) {
 
   const { weddingId, rows } = result.data;
 
-  const wedding = await getOwnedWedding(session.user.id, weddingId);
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -90,9 +79,9 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Guest cap enforcement (couple weddings only) ──────────────────────────
-  if (wedding.coupleAccount) {
+  if (access.wedding.coupleAccount) {
     const existing = await db.guest.count({ where: { weddingId } });
-    const available = wedding.coupleAccount.guestCap - existing;
+    const available = access.wedding.coupleAccount.guestCap - existing;
     if (validRows.length > available) {
       return NextResponse.json(
         { error: "cap_exceeded", overBy: validRows.length - available },

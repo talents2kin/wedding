@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
     guest: { findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     guestCeremony: { deleteMany: vi.fn(), createMany: vi.fn() },
   },
@@ -23,8 +23,13 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 
 const WEDDING = {
   id: "w1",
-  coupleAccount: { guestCap: 50 },
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
   plannerAccount: null,
+  collaborators: [],
 };
 
 const GUEST = {
@@ -74,7 +79,7 @@ describe("PATCH /api/guest/[id]", () => {
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guest.findUnique).mockResolvedValue(GUEST as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await PATCH(makeReq("PATCH", { name: "Bob" }), { params: PARAMS });
     expect(res.status).toBe(403);
   });
@@ -82,7 +87,7 @@ describe("PATCH /api/guest/[id]", () => {
   it("returns 200 with updated guest", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guest.findUnique).mockResolvedValue(GUEST as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guest.update).mockResolvedValue({ ...GUEST, name: "Bob" } as never);
 
     const res = await PATCH(makeReq("PATCH", { name: "Bob" }), { params: PARAMS });
@@ -94,7 +99,7 @@ describe("PATCH /api/guest/[id]", () => {
   it("replaces ceremony assignments when ceremonyIds provided", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guest.findUnique).mockResolvedValue(GUEST as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guestCeremony.deleteMany).mockResolvedValue({ count: 1 } as never);
     vi.mocked(db.guestCeremony.createMany).mockResolvedValue({ count: 1 } as never);
     vi.mocked(db.guest.update).mockResolvedValue(GUEST as never);
@@ -131,7 +136,7 @@ describe("DELETE /api/guest/[id]", () => {
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guest.findUnique).mockResolvedValue(GUEST as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await DELETE(makeReq("DELETE"), { params: PARAMS });
     expect(res.status).toBe(403);
   });
@@ -139,7 +144,7 @@ describe("DELETE /api/guest/[id]", () => {
   it("returns 204 on successful delete", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
     vi.mocked(db.guest.findUnique).mockResolvedValue(GUEST as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.guest.delete).mockResolvedValue(GUEST as never);
 
     const res = await DELETE(makeReq("DELETE"), { params: PARAMS });

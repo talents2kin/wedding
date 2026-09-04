@@ -9,7 +9,7 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
   },
 }));
 
@@ -30,7 +30,16 @@ const GUEST_CEREMONY = {
   guest: { weddingId: "w1" },
 };
 
-const WEDDING = { id: "w1" };
+const WEDDING = {
+  id: "w1",
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
+  plannerAccount: null,
+  collaborators: [],
+};
 
 function makePATCH(body: unknown) {
   return new NextRequest("http://localhost:3000/api/rsvp", {
@@ -44,7 +53,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(auth).mockResolvedValue(SESSION as never);
   vi.mocked(db.guestCeremony.findUnique).mockResolvedValue(GUEST_CEREMONY as never);
-  vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+  vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
   vi.mocked(db.guestCeremony.update).mockResolvedValue({ ...GUEST_CEREMONY, rsvp: "CONFIRMED" } as never);
 });
 
@@ -76,7 +85,7 @@ describe("PATCH /api/rsvp", () => {
   });
 
   it("returns 403 when wedding not owned", async () => {
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null as never);
     const res = await PATCH(makePATCH({ guestId: "g1", ceremonyId: "c1", rsvp: "CONFIRMED" }));
     expect(res.status).toBe(403);
   });

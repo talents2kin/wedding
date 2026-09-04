@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Send, Lock, CheckCircle2, XCircle, Clock, RotateCcw, ChevronRight, Mail, MessageSquare, Phone, Download, Archive } from "lucide-react";
+import { Send, Lock, CheckCircle2, XCircle, Clock, RotateCcw, ChevronRight, Mail, MessageSquare, Phone, Download, Archive, CalendarClock, Bell, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,33 @@ export type Invitation = {
   customBody: string | null;
 };
 
-type Tab = "templates" | "send" | "status";
+export type ScheduledItem = {
+  id: string;
+  weddingId: string;
+  ceremonyId: string;
+  templateId: string;
+  channel: "EMAIL" | "SMS" | "WHATSAPP";
+  scheduledAt: string;
+  status: "PENDING" | "FIRED" | "CANCELLED";
+  customBody: string | null;
+  ceremony: { type: string; customLabel: string | null; date: string | null };
+  guests: { guestId: string }[];
+};
+
+export type RsvpReminderItem = {
+  id: string;
+  weddingId: string;
+  ceremonyId: string;
+  templateId: string;
+  channel: "EMAIL" | "SMS" | "WHATSAPP";
+  daysAfter: number;
+  enabled: boolean;
+  firedAt: string | null;
+  createdAt: string;
+  ceremony: { type: string; customLabel: string | null };
+};
+
+type Tab = "templates" | "send" | "status" | "planifier";
 
 type Props = {
   weddingId: string;
@@ -49,6 +75,8 @@ type Props = {
   ceremonies: Ceremony[];
   initialGuests: Guest[];
   initialInvitations: Invitation[];
+  initialScheduled: ScheduledItem[];
+  initialReminders: RsvpReminderItem[];
 };
 
 // ---------------------------------------------------------------------------
@@ -90,6 +118,8 @@ export function InvitationManager({
   ceremonies,
   initialGuests,
   initialInvitations,
+  initialScheduled,
+  initialReminders,
 }: Props) {
   const [tab, setTab] = useState<Tab>("templates");
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -103,6 +133,20 @@ export function InvitationManager({
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number } | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations);
   const [isPending, startTransition] = useTransition();
+
+  // Planifier state
+  const [scheduled, setScheduled] = useState<ScheduledItem[]>(initialScheduled);
+  const [reminders, setReminders] = useState<RsvpReminderItem[]>(initialReminders);
+  const [schedTemplate, setSchedTemplate] = useState<string>(templates[0]?.id ?? "");
+  const [schedCeremonyId, setSchedCeremonyId] = useState<string>(ceremonies[0]?.id ?? "");
+  const [schedChannel, setSchedChannel] = useState<"EMAIL" | "SMS" | "WHATSAPP">("EMAIL");
+  const [schedGuestIds, setSchedGuestIds] = useState<string[]>([]);
+  const [schedAt, setSchedAt] = useState<string>("");
+  const [schedError, setSchedError] = useState<string | null>(null);
+  const [reminderCeremonyId, setReminderCeremonyId] = useState<string>(ceremonies[0]?.id ?? "");
+  const [reminderTemplate, setReminderTemplate] = useState<string>(templates[0]?.id ?? "");
+  const [reminderChannel, setReminderChannel] = useState<"EMAIL" | "SMS" | "WHATSAPP">("EMAIL");
+  const [reminderDays, setReminderDays] = useState<number>(3);
 
   const selectedCeremony = ceremonies.find((c) => c.id === selectedCeremonyId);
   const previewGuest = initialGuests.find((g) => g.id === previewGuestId) ?? initialGuests[0];
@@ -197,12 +241,94 @@ export function InvitationManager({
     });
   }
 
+  // ── Planifier handlers ────────────────────────────────────────────────────
+
+  async function scheduleNotification() {
+    if (!schedTemplate || !schedCeremonyId || schedGuestIds.length === 0 || !schedAt) return;
+    setSchedError(null);
+    startTransition(async () => {
+      const res = await fetch("/api/scheduled", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weddingId,
+          ceremonyId: schedCeremonyId,
+          templateId: schedTemplate,
+          channel: schedChannel,
+          guestIds: schedGuestIds,
+          scheduledAt: new Date(schedAt).toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setSchedError(err.error === "scheduled_at_must_be_future" ? "La date doit être dans le futur." : "Erreur lors de la planification.");
+        return;
+      }
+      const listRes = await fetch(`/api/scheduled?weddingId=${weddingId}`);
+      if (listRes.ok) {
+        const { items } = await listRes.json();
+        setScheduled(items);
+      }
+      setSchedGuestIds([]);
+      setSchedAt("");
+    });
+  }
+
+  async function cancelScheduled(id: string) {
+    startTransition(async () => {
+      await fetch(`/api/scheduled/${id}`, { method: "DELETE" });
+      setScheduled((prev) => prev.filter((s) => s.id !== id));
+    });
+  }
+
+  async function createReminder() {
+    startTransition(async () => {
+      const res = await fetch("/api/reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weddingId,
+          ceremonyId: reminderCeremonyId,
+          templateId: reminderTemplate,
+          channel: reminderChannel,
+          daysAfter: reminderDays,
+        }),
+      });
+      if (!res.ok) return;
+      const listRes = await fetch(`/api/reminder?weddingId=${weddingId}`);
+      if (listRes.ok) {
+        const { reminders: fresh } = await listRes.json();
+        setReminders(fresh);
+      }
+    });
+  }
+
+  async function toggleReminder(id: string, enabled: boolean) {
+    startTransition(async () => {
+      const res = await fetch(`/api/reminder/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) return;
+      setReminders((prev) => prev.map((r) => (r.id === id ? { ...r, enabled } : r)));
+    });
+  }
+
+  async function deleteReminder(id: string) {
+    startTransition(async () => {
+      await fetch(`/api/reminder/${id}`, { method: "DELETE" });
+      setReminders((prev) => prev.filter((r) => r.id !== id));
+    });
+  }
+
   // ── Tab bar ───────────────────────────────────────────────────────────────
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "templates", label: "Modèles" },
     { id: "send", label: "Envoyer" },
     { id: "status", label: `Statuts (${invitations.length})` },
+    { id: "planifier", label: "Planifier" },
   ];
 
   return (
@@ -472,6 +598,302 @@ export function InvitationManager({
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── PLANIFIER tab ─────────────────────────────────────────────────── */}
+      {tab === "planifier" && (
+        <div className="flex flex-col gap-8">
+
+          {/* ── Scheduled sends ─────────────────────────────────────────── */}
+          <section className="rounded-xl border border-border bg-background p-5">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+              <CalendarClock className="h-4 w-4 text-primary" />
+              Planifier un envoi
+            </h3>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Template */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Modèle</label>
+                <select
+                  value={schedTemplate}
+                  onChange={(e) => setSchedTemplate(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  {templates.filter((t) => !t.isPremium || isPaidAccount).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ceremony */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Cérémonie</label>
+                <select
+                  value={schedCeremonyId}
+                  onChange={(e) => setSchedCeremonyId(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  {ceremonies.map((c) => (
+                    <option key={c.id} value={c.id}>{ceremonyLabel(c)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Channel */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Canal</label>
+                <div className="flex gap-2">
+                  {(["EMAIL", "SMS", "WHATSAPP"] as const).map((ch) => {
+                    const { label, icon: Icon } = CHANNEL_CONFIG[ch];
+                    return (
+                      <button
+                        key={ch}
+                        type="button"
+                        onClick={() => setSchedChannel(ch)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          schedChannel === ch
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Date/time */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Date et heure d&apos;envoi</label>
+                <Input
+                  type="datetime-local"
+                  value={schedAt}
+                  onChange={(e) => setSchedAt(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Guest selection */}
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground">Invités</label>
+                <button
+                  type="button"
+                  onClick={() => setSchedGuestIds((prev) => prev.length === initialGuests.length ? [] : initialGuests.map((g) => g.id))}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {schedGuestIds.length === initialGuests.length ? "Tout désélectionner" : "Tout sélectionner"}
+                </button>
+              </div>
+              <ul className="max-h-48 overflow-y-auto divide-y divide-border rounded-lg border border-border">
+                {initialGuests.map((g) => (
+                  <li key={g.id} className="flex items-center gap-3 px-4 py-2">
+                    <input
+                      type="checkbox"
+                      id={`sg-${g.id}`}
+                      checked={schedGuestIds.includes(g.id)}
+                      onChange={() => setSchedGuestIds((prev) => prev.includes(g.id) ? prev.filter((x) => x !== g.id) : [...prev, g.id])}
+                      className="h-4 w-4 rounded"
+                    />
+                    <label htmlFor={`sg-${g.id}`} className="flex-1 cursor-pointer text-sm">{g.name}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {schedError && <p className="mt-2 text-sm text-destructive">{schedError}</p>}
+
+            <button
+              type="button"
+              onClick={scheduleNotification}
+              disabled={isPending || schedGuestIds.length === 0 || !schedAt}
+              className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+            >
+              <CalendarClock className="h-4 w-4" />
+              Planifier l&apos;envoi
+            </button>
+          </section>
+
+          {/* ── Pending scheduled list ──────────────────────────────────── */}
+          <section>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              Envois planifiés ({scheduled.length})
+            </h3>
+            {scheduled.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                Aucun envoi planifié pour le moment.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
+                {scheduled.map((s) => {
+                  const { label: chLabel, icon: ChIcon } = CHANNEL_CONFIG[s.channel];
+                  const cLabel = s.ceremony.customLabel ?? { CIVIL: "Civil", RELIGIOUS: "Religieux", TRADITIONAL: "Traditionnel", RECEPTION: "Réception" }[s.ceremony.type] ?? s.ceremony.type;
+                  return (
+                    <li key={s.id} className="flex items-center gap-4 px-5 py-3">
+                      <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">
+                          {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(s.scheduledAt))}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {cLabel} · {chLabel} · {s.guests.length} invité{s.guests.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        <ChIcon className="h-3 w-3" />
+                        {chLabel}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => cancelScheduled(s.id)}
+                        disabled={isPending}
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Annuler
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* ── RSVP Reminders ──────────────────────────────────────────── */}
+          <section className="rounded-xl border border-border bg-background p-5">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+              <Bell className="h-4 w-4 text-primary" />
+              Rappels RSVP automatiques
+            </h3>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Envoyez automatiquement un rappel aux invités qui n&apos;ont pas encore répondu.
+            </p>
+
+            {/* Add reminder form */}
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 rounded-lg bg-muted/40 p-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Cérémonie</label>
+                <select
+                  value={reminderCeremonyId}
+                  onChange={(e) => setReminderCeremonyId(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  {ceremonies.map((c) => (
+                    <option key={c.id} value={c.id}>{ceremonyLabel(c)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Modèle</label>
+                <select
+                  value={reminderTemplate}
+                  onChange={(e) => setReminderTemplate(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  {templates.filter((t) => !t.isPremium || isPaidAccount).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Canal</label>
+                <div className="flex gap-2">
+                  {(["EMAIL", "SMS", "WHATSAPP"] as const).map((ch) => {
+                    const { label, icon: Icon } = CHANNEL_CONFIG[ch];
+                    return (
+                      <button
+                        key={ch}
+                        type="button"
+                        onClick={() => setReminderChannel(ch)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          reminderChannel === ch
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Jours après création</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={reminderDays}
+                  onChange={(e) => setReminderDays(Number(e.target.value))}
+                  className="h-9 w-32 text-sm"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={createReminder}
+                  disabled={isPending}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+                >
+                  <Bell className="h-4 w-4" />
+                  Ajouter le rappel
+                </button>
+              </div>
+            </div>
+
+            {/* Reminder list */}
+            {reminders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun rappel configuré.</p>
+            ) : (
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                {reminders.map((r) => {
+                  const cLabel = r.ceremony.customLabel ?? { CIVIL: "Civil", RELIGIOUS: "Religieux", TRADITIONAL: "Traditionnel", RECEPTION: "Réception" }[r.ceremony.type] ?? r.ceremony.type;
+                  const { label: chLabel } = CHANNEL_CONFIG[r.channel];
+                  return (
+                    <li key={r.id} className="flex items-center gap-4 px-5 py-3">
+                      <Bell className={cn("h-4 w-4 shrink-0", r.enabled ? "text-primary" : "text-muted-foreground/40")} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{cLabel}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {chLabel} · {r.daysAfter} jour{r.daysAfter !== 1 ? "s" : ""} après création
+                          {r.firedAt && " · Envoyé"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleReminder(r.id, !r.enabled)}
+                        disabled={isPending || !!r.firedAt}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                        title={r.enabled ? "Désactiver" : "Activer"}
+                      >
+                        {r.enabled
+                          ? <ToggleRight className="h-5 w-5 text-primary" />
+                          : <ToggleLeft className="h-5 w-5" />
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteReminder(r.id)}
+                        disabled={isPending}
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
         </div>
       )}
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 const reorderSchema = z.object({
   weddingId: z.string().min(1),
@@ -27,18 +28,8 @@ export async function POST(req: NextRequest) {
 
   const { weddingId, orderedIds } = parsed.data;
 
-  // Verify ownership
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      OR: [
-        { coupleAccount: { userId: session.user.id } },
-        { plannerAccount: { userId: session.user.id } },
-      ],
-    },
-  });
-
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

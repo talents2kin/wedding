@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
     ceremony: { findMany: vi.fn(), create: vi.fn(), count: vi.fn() },
   },
 }));
@@ -22,10 +22,13 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 
 const WEDDING = {
   id: "w1",
+  name: "Test Wedding",
+  senderName: null,
   coupleAccountId: "ca1",
   plannerAccountId: null,
-  coupleAccount: { userId: "u1" },
+  coupleAccount: { userId: "u1", guestCap: 50 },
   plannerAccount: null,
+  collaborators: [],
 };
 
 const CEREMONY = {
@@ -76,14 +79,14 @@ describe("GET /api/ceremony", () => {
 
   it("returns 403 when user does not own the wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await GET(makeGET("w1"));
     expect(res.status).toBe(403);
   });
 
   it("returns 200 with ceremonies ordered by position", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.ceremony.findMany).mockResolvedValue([CEREMONY] as never);
 
     const res = await GET(makeGET("w1"));
@@ -110,7 +113,7 @@ describe("POST /api/ceremony", () => {
 
   it("returns 403 when user does not own the wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await POST(makePOST({ weddingId: "w1", type: "CIVIL" }));
     expect(res.status).toBe(403);
   });
@@ -123,14 +126,14 @@ describe("POST /api/ceremony", () => {
 
   it("returns 400 when type is invalid", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     const res = await POST(makePOST({ weddingId: "w1", type: "INVALID" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when type is CUSTOM but customLabel is missing", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.ceremony.count).mockResolvedValue(0);
     const res = await POST(makePOST({ weddingId: "w1", type: "CUSTOM" }));
     expect(res.status).toBe(400);
@@ -138,7 +141,7 @@ describe("POST /api/ceremony", () => {
 
   it("returns 201 on success with CIVIL type", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.ceremony.count).mockResolvedValue(0);
     vi.mocked(db.ceremony.create).mockResolvedValue(CEREMONY as never);
 
@@ -150,7 +153,7 @@ describe("POST /api/ceremony", () => {
 
   it("returns 201 on success with CUSTOM type + label", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
     vi.mocked(db.ceremony.count).mockResolvedValue(1);
     vi.mocked(db.ceremony.create).mockResolvedValue({
       ...CEREMONY,

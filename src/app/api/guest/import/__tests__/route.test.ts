@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
     guest: { count: vi.fn(), createMany: vi.fn() },
   },
 }));
@@ -22,14 +22,24 @@ const SESSION = { user: { id: "u1", email: "a@b.com", name: "A" } };
 
 const WEDDING_COUPLE = {
   id: "w1",
-  coupleAccount: { guestCap: 50 },
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
+  coupleAccount: { userId: "u1", guestCap: 50 },
   plannerAccount: null,
+  collaborators: [],
 };
 
 const WEDDING_PLANNER = {
   id: "w2",
+  name: "Test Wedding",
+  senderName: null,
+  coupleAccountId: null,
+  plannerAccountId: "pa1",
   coupleAccount: null,
   plannerAccount: { userId: "u1" },
+  collaborators: [],
 };
 
 function makeReq(body: unknown) {
@@ -60,28 +70,28 @@ describe("POST /api/guest/import", () => {
 
   it("returns 403 when user does not own wedding", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null);
     const res = await POST(makeReq({ weddingId: "w1", rows: VALID_ROWS }));
     expect(res.status).toBe(403);
   });
 
   it("returns 400 when rows is missing", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     const res = await POST(makeReq({ weddingId: "w1" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when rows is empty", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     const res = await POST(makeReq({ weddingId: "w1", rows: [] }));
     expect(res.status).toBe(400);
   });
 
   it("returns row errors for rows missing name", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     vi.mocked(db.guest.count).mockResolvedValue(0);
     vi.mocked(db.guest.createMany).mockResolvedValue({ count: 1 } as never);
 
@@ -100,7 +110,7 @@ describe("POST /api/guest/import", () => {
 
   it("flags duplicate emails within the import", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     vi.mocked(db.guest.count).mockResolvedValue(0);
     vi.mocked(db.guest.createMany).mockResolvedValue({ count: 1 } as never);
 
@@ -119,7 +129,7 @@ describe("POST /api/guest/import", () => {
 
   it("flags duplicate phones within the import", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     vi.mocked(db.guest.count).mockResolvedValue(0);
     vi.mocked(db.guest.createMany).mockResolvedValue({ count: 1 } as never);
 
@@ -136,7 +146,7 @@ describe("POST /api/guest/import", () => {
 
   it("returns 402 and rejects all when import would exceed guest cap", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     vi.mocked(db.guest.count).mockResolvedValue(49); // 1 slot left, importing 2
 
     const res = await POST(makeReq({ weddingId: "w1", rows: VALID_ROWS }));
@@ -149,7 +159,7 @@ describe("POST /api/guest/import", () => {
 
   it("does not enforce cap for planner weddings", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_PLANNER as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_PLANNER as never);
     vi.mocked(db.guest.createMany).mockResolvedValue({ count: 2 } as never);
 
     const res = await POST(makeReq({ weddingId: "w2", rows: VALID_ROWS }));
@@ -159,7 +169,7 @@ describe("POST /api/guest/import", () => {
 
   it("returns 200 with imported count on full success", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION as never);
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING_COUPLE as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING_COUPLE as never);
     vi.mocked(db.guest.count).mockResolvedValue(0);
     vi.mocked(db.guest.createMany).mockResolvedValue({ count: 2 } as never);
 

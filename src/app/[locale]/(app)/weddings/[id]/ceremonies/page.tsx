@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess } from "@/lib/wedding-access";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { CeremonyManager } from "@/components/app/ceremony-manager";
@@ -15,14 +16,13 @@ export default async function PlannerCeremoniesPage({
 
   const { id: weddingId } = await params;
 
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id: weddingId,
-      plannerAccount: { userId: session.user.id },
-    },
+  const access = await getWeddingAccess(session.user.id, weddingId);
+  if (!access) notFound();
+
+  const wedding = await db.wedding.findUnique({
+    where: { id: weddingId },
     include: { ceremonies: { orderBy: { position: "asc" } } },
   });
-
   if (!wedding) notFound();
 
   return (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 const patchSchema = z.object({
   senderName: z.string().min(1).nullable().optional(),
@@ -23,16 +24,8 @@ export async function PATCH(
 
   const { id } = await params;
 
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id,
-      OR: [
-        { coupleAccount: { userId: session.user.id } },
-        { plannerAccount: { userId: session.user.id } },
-      ],
-    },
-  });
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, id);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

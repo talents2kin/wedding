@@ -6,7 +6,7 @@ vi.mock("@/lib/delivery", () => ({ deliver: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    wedding: { findFirst: vi.fn() },
+    wedding: { findUnique: vi.fn() },
     guest: { findMany: vi.fn() },
     ceremony: { findUnique: vi.fn() },
     invitation: {
@@ -31,8 +31,11 @@ const WEDDING = {
   id: "w1",
   name: "Mariage Test",
   senderName: "Marie & Pierre",
+  coupleAccountId: "ca1",
+  plannerAccountId: null,
   coupleAccount: { userId: "u1", guestCap: 50 },
   plannerAccount: null,
+  collaborators: [],
 };
 const GUEST = {
   id: "g1",
@@ -67,7 +70,7 @@ function makePOST(body: unknown) {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(auth).mockResolvedValue(SESSION as never);
-  vi.mocked(db.wedding.findFirst).mockResolvedValue(WEDDING as never);
+  vi.mocked(db.wedding.findUnique).mockResolvedValue(WEDDING as never);
   vi.mocked(db.guest.findMany).mockResolvedValue([GUEST] as never);
   vi.mocked(db.ceremony.findUnique).mockResolvedValue(CEREMONY as never);
   vi.mocked(db.invitation.findMany).mockResolvedValue([]);
@@ -91,7 +94,7 @@ describe("GET /api/invitation", () => {
   });
 
   it("returns 403 when wedding not owned", async () => {
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null as never);
     const res = await GET(makeGET({ weddingId: "w1" }));
     expect(res.status).toBe(403);
   });
@@ -134,7 +137,7 @@ describe("POST /api/invitation", () => {
   });
 
   it("returns 403 when wedding not owned", async () => {
-    vi.mocked(db.wedding.findFirst).mockResolvedValue(null as never);
+    vi.mocked(db.wedding.findUnique).mockResolvedValue(null as never);
     const res = await POST(makePOST({ weddingId: "w1", ceremonyId: "c1", templateId: "classique", guestIds: ["g1"], channel: "EMAIL" }));
     expect(res.status).toBe(403);
   });

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { findTemplate, renderBody } from "@/lib/templates";
 import { deliver } from "@/lib/delivery";
+import { getWeddingAccess, canEdit } from "@/lib/wedding-access";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,17 +24,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Verify wedding ownership
-  const wedding = await db.wedding.findFirst({
-    where: {
-      id: invitation.weddingId,
-      OR: [
-        { coupleAccount: { userId: session.user.id } },
-        { plannerAccount: { userId: session.user.id } },
-      ],
-    },
-  });
-  if (!wedding) {
+  const access = await getWeddingAccess(session.user.id, invitation.weddingId);
+  if (!access || !canEdit(access.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -47,7 +39,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     db.ceremony.findUnique({ where: { id: invitation.ceremonyId } }),
   ]);
 
-  const senderName = (wedding as { senderName?: string | null }).senderName ?? (wedding as { name: string }).name;
+  const senderName = access.wedding.senderName ?? access.wedding.name;
   const template = findTemplate(invitation.templateId);
   const bodyText = invitation.customBody ?? template?.bodyText ?? "";
 
